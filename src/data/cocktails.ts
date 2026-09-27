@@ -1,8 +1,11 @@
 import { classics } from './classics';
+import { classics2 } from './classics2';
 import { modern } from './modern';
+import { modern2 } from './modern2';
+import { modern3 } from './modern3';
 import type { Cocktail, FlavorKey, GlassKey, MethodKey, SpiritKey, Strength, StyleKey } from './types';
 
-export const cocktails: Cocktail[] = [...classics, ...modern];
+export const cocktails: Cocktail[] = [...classics, ...classics2, ...modern, ...modern2, ...modern3];
 export const cocktailIds: string[] = cocktails.map((c) => c.id);
 export const cocktailById: Record<string, Cocktail> = Object.fromEntries(cocktails.map((c) => [c.id, c]));
 
@@ -14,7 +17,9 @@ export const SPIRIT_LABELS: Record<SpiritKey, string> = {
   mezcal: 'Mezcal',
   brandy: 'Brandy & Cognac',
   vodka: 'Vodka',
-  none: 'Low / no spirit',
+  pisco: 'Pisco',
+  cachaca: 'Cachaça',
+  none: 'Other bases',
 };
 
 export const FLAVOR_LABELS: Record<FlavorKey, string> = {
@@ -29,6 +34,10 @@ export const FLAVOR_LABELS: Record<FlavorKey, string> = {
   coffee: 'Coffee',
   fruity: 'Fruity',
   spicy: 'Spicy',
+  creamy: 'Creamy',
+  tropical: 'Tropical',
+  savory: 'Savoury',
+  floral: 'Floral',
 };
 
 export const STYLE_LABELS: Record<StyleKey, string> = {
@@ -38,6 +47,9 @@ export const STYLE_LABELS: Record<StyleKey, string> = {
   sparkling: 'Sparkling',
   smash: 'Smashes & juleps',
   muddled: 'Muddled',
+  tiki: 'Tiki',
+  hot: 'Hot drinks',
+  creamy: 'Creamy & dessert',
 };
 
 export const METHOD_LABELS: Record<MethodKey, string> = {
@@ -46,6 +58,7 @@ export const METHOD_LABELS: Record<MethodKey, string> = {
   built: 'Built in the glass',
   muddled: 'Muddled',
   swizzled: 'Swizzled',
+  blended: 'Blended',
 };
 
 export const STRENGTH_LABELS: Record<Strength, string> = {
@@ -63,6 +76,9 @@ export const GLASS_LABELS: Record<GlassKey, string> = {
   flute: 'Flute',
   mule: 'Copper mug',
   julep: 'Julep cup',
+  irish: 'Irish coffee glass',
+  hurricane: 'Hurricane glass',
+  wine: 'Wine glass',
 };
 
 export const ERA_LABELS = { classic: 'Classic', modern: 'Modern' } as const;

@@ -4,10 +4,10 @@ import { ingredientIndex } from '../src/data/ingredients';
 import { formatAmount, formatOz } from '../src/lib/units';
 
 describe('cocktail library', () => {
-  it('has 24 cocktails: 16 classic and 8 modern', () => {
-    expect(cocktails).toHaveLength(24);
-    expect(cocktails.filter((c) => c.era === 'classic')).toHaveLength(16);
-    expect(cocktails.filter((c) => c.era === 'modern')).toHaveLength(8);
+  it('has 56 cocktails: 32 classic and 24 modern', () => {
+    expect(cocktails).toHaveLength(56);
+    expect(cocktails.filter((c) => c.era === 'classic')).toHaveLength(32);
+    expect(cocktails.filter((c) => c.era === 'modern')).toHaveLength(24);
   });
 
   it('covers at least five base spirits', () => {
@@ -47,6 +47,10 @@ describe('cocktail library', () => {
     for (const c of cocktails) {
       for (const line of c.recipe) {
         if (line.unit === 'ml' || line.unit === 'oz') {
+          if (line.amountText) {
+            expect(line.amountText, c.id).toMatch(/ml.*oz/);
+            continue;
+          }
           const f = formatAmount(line);
           expect(f.metric).toMatch(/ml$/);
           expect(f.imperial).toMatch(/oz$/);

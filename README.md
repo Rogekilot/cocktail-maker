@@ -6,8 +6,9 @@ Cocktail Maker is a local web app for discovering cocktails and making them at h
 - **Discover**: browse by Classic/Modern, base spirit, flavour, style, strength and method, or pick a curated collection.
 - **My Bar**: enter the ingredients you have and see which cocktails you can make right now, plus which ones are close.
 - **Cocktail pages**: ml and oz measures, method, glass, ice and garnish, some history, and cited sources.
+- **Two languages**: English and Simplified Chinese (简体中文). Switch with the globe button in the header or on the About page.
 
-The library has 24 cocktails: 16 Classic and 8 Modern.
+The library has 56 cocktails: 32 Classic and 24 Modern.
 
 ## Running it locally
 
@@ -15,7 +16,7 @@ You need **Node.js 20 or newer** (it was developed on Node 26) and npm.
 
 ```bash
 npm install      # install dependencies into ./node_modules
-npm run dev      # start the dev server at http://127.0.0.1:5173
+npm run dev      # start the dev server at http://127.0.0.1:5173 (or the port in $PORT)
 ```
 
 Other scripts:
@@ -26,7 +27,7 @@ npm run build    # type-check and build a production bundle into ./dist
 npm run preview  # serve the production build at http://127.0.0.1:4173
 ```
 
-There is no backend and no account. The site keeps your ingredient list, the cocktails you've opened and today's pick in the browser's `localStorage`. You can clear them from the About page.
+There is no backend and no account. The site keeps your ingredient list, the cocktails you've opened, today's pick and your language choice in the browser's `localStorage`. You can clear them from the About page.
 
 ## How the rules work
 
@@ -45,11 +46,21 @@ There is no backend and no account. The site keeps your ingredient list, the coc
 
 ## Content and sources
 
-- The recipe data is in `src/data/classics.ts` and `src/data/modern.ts`. Each cocktail lists its sources, and `formulaSource` marks the one its formula follows.
-- For all 24 drinks the formula follows the **IBA official cocktail** page. The Tom Collins uses the IBA's John Collins, whose own note says to use Old Tom gin for a Tom Collins.
-- Other sources cover history, provenance and recognition: Difford's Guide, PUNCH, CLASS, Drinks International, the creators' own bars and a digitised 1887 Jerry Thomas bar guide. Where sources disagree (years, ratios, venues), the page says so.
+- The recipe data is in `src/data/classics.ts`, `classics2.ts`, `modern.ts`, `modern2.ts` and `modern3.ts`. Each cocktail lists its sources, and `formulaSource` marks the one its formula follows.
+- **47 of the 56 formulas follow the IBA official cocktail page.** The Tom Collins uses the IBA's John Collins, whose own note says to use Old Tom gin for a Tom Collins.
+- **The other 9 are modern drinks the IBA doesn't list.** Their formulas follow the creator's own published spec where one exists: Death & Co for the Oaxaca Old Fashioned, and Difford's Guide citing Wayne Collins' equal parts for the White Negroni. Otherwise they follow a PUNCH recipe credited to the creator: Gold Rush, Final Ward, Division Bell, Jasmine, Red Hook, Greenpoint and Siesta.
+- Other sources cover history, provenance and recognition: Difford's Guide, PUNCH, CLASS, Imbibe, Robb Report, Whisky Advocate, Drinks International's 2025 bestselling-classics report, the creators' own bars and a digitised 1887 Jerry Thomas bar guide. Where sources disagree (years, ratios, venues, creators), the page says so.
 - The raw research notes, with the URLs checked and the conflicts found, are in `docs/research/`. All pages were accessed on 2026-09-28.
 - Measures are converted at the bar convention of 30 ml = 1 oz. Rounded conversions are marked with "≈".
+
+## Simplified Chinese
+
+- The interface text is in `src/i18n/strings.ts`. The `zh` object is typed against `en`, so no key can be missing.
+- Cocktail text is translated in `src/i18n/zh/set1.ts` to `set4.ts`, and ingredient names and category labels sit alongside it. `src/i18n/I18n.tsx` merges them onto the English data at runtime. Quantities, ingredient ids, matching rules and source URLs stay shared, so both languages always show the same recipe.
+- Reference titles and people's names stay in their original language. The recipe measures themselves are unchanged; only the counting words are translated (抖, 吧勺…).
+- The terminology is kept consistent through `docs/zh-glossary.md`.
+- On a first visit the language follows the browser setting. After that, the choice you make is remembered.
+- `tests/i18n.test.ts` checks that every cocktail and ingredient has Chinese text, that the translated arrays line up with the English ones, and that localisation never changes recipe data.
 
 ## Images
 
@@ -60,10 +71,12 @@ Every image is an **original SVG illustration** drawn in code (`src/components/C
 ```
 src/
   data/        cocktails, ingredients, types, source helpers
+  i18n/        UI strings (en/zh), Chinese cocktail/ingredient text, language provider
   lib/         matching, daily pick, units, storage, app state
   components/  layout, cards, SVG illustration, icons
   pages/       Home, Discover, My Bar, Cocktail detail, About
   styles/      global + page CSS
-tests/         Vitest unit tests (matching rules, daily pick, data integrity, units)
+tests/         Vitest unit tests (matching rules, daily pick, data integrity, units, i18n)
 docs/research/ raw research notes behind the recipe data
+docs/zh-glossary.md  Chinese terminology glossary
 ```

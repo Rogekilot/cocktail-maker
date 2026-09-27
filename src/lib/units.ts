@@ -61,6 +61,19 @@ export function lineMl(line: RecipeLine): number | undefined {
   }
 }
 
+const COUNT_WORDS_ZH: Record<string, string> = {
+  dash: '抖',
+  drop: '滴',
+  cube: '块',
+  leaf: '片',
+  sprig: '枝',
+  slice: '片',
+  wedge: '角',
+  piece: '个',
+  barspoon: '吧勺',
+  tsp: '茶匙',
+};
+
 const COUNT_WORDS: Record<string, [string, string]> = {
   dash: ['dash', 'dashes'],
   drop: ['drop', 'drops'],
@@ -91,19 +104,22 @@ export interface FormattedAmount {
   imperial?: string;
 }
 
-export function formatAmount(line: RecipeLine): FormattedAmount {
+export function formatAmount(line: RecipeLine, locale: 'en' | 'zh' = 'en'): FormattedAmount {
   if (line.amountText) return { primary: line.amountText };
+  const zh = locale === 'zh';
   const ml = lineMl(line);
   if (line.unit === 'ml' || line.unit === 'oz') {
     const metric = formatMl(ml!);
     const imperial = formatOz(ml! / ML_PER_OZ);
     return { primary: metric, secondary: imperial, metric, imperial };
   }
-  if (line.unit === 'top') return { primary: 'Top up' };
-  if (line.unit === 'rinse') return { primary: 'Rinse' };
+  if (line.unit === 'top') return { primary: zh ? '补满' : 'Top up' };
+  if (line.unit === 'rinse') return { primary: zh ? '涮杯' : 'Rinse' };
   const words = COUNT_WORDS[line.unit];
   const n = line.amount ?? 1;
-  const primary = `${formatCount(n)} ${n > 1 ? words[1] : words[0]}`;
+  const primary = zh
+    ? `${formatCount(n)} ${COUNT_WORDS_ZH[line.unit]}`
+    : `${formatCount(n)} ${n > 1 ? words[1] : words[0]}`;
   if (ml != null) {
     const metric = formatMl(ml);
     const imperial = formatOz(ml / ML_PER_OZ);

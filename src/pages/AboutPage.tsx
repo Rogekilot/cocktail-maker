@@ -1,101 +1,103 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { cocktails } from '../data/cocktails';
+import { useI18n } from '../i18n/I18n';
 import { useAppState } from '../lib/AppState';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 
 export function AboutPage() {
-  useDocumentTitle('About');
+  const { t, cocktails, locale, setLocale } = useI18n();
+  useDocumentTitle(t.about.eyebrow);
   const { bar, history, setBar, clearHistory } = useAppState();
   const [done, setDone] = useState<string | null>(null);
   const opened = Object.keys(history).length;
+  const classicN = cocktails.filter((c) => c.era === 'classic').length;
+  const modernN = cocktails.filter((c) => c.era === 'modern').length;
 
   const publishers = new Map<string, number>();
-  for (const c of cocktails) for (const s of c.sources) publishers.set(s.publisher, (publishers.get(s.publisher) ?? 0) + 1);
+  for (const c of cocktails)
+    for (const s of c.sources) {
+      const p = s.publisher.replace(/\s*\(.*\)$/, '');
+      publishers.set(p, (publishers.get(p) ?? 0) + 1);
+    }
 
   return (
     <div className="container about">
       <header className="page-head">
-        <p className="eyebrow">About</p>
-        <h1>How Cocktail Maker works</h1>
-        <p className="muted page-lede">
-          {cocktails.length} carefully referenced cocktails — {cocktails.filter((c) => c.era === 'classic').length}{' '}
-          classics and {cocktails.filter((c) => c.era === 'modern').length} modern classics — with honest recipes you
-          can actually make at home.
-        </p>
+        <p className="eyebrow">{t.about.eyebrow}</p>
+        <h1>{t.about.title}</h1>
+        <p className="muted page-lede">{t.about.lede(cocktails.length, classicN, modernN)}</p>
       </header>
 
       <div className="about-grid">
         <section className="panel">
-          <h2>The recipes</h2>
-          <p>
-            Every formula follows a named reference, shown in each drink’s <em>Sources</em> section. For all 24 drinks
-            that reference is the International Bartenders Association’s official cocktail list, used as the common,
-            primary spec. Additional sources — Difford’s Guide, PUNCH, CLASS, Drinks International, the creators’ own
-            bars and a digitised 19th-century bar book — support history, provenance and recognition.
-          </p>
-          <p>
-            Where sources disagree (a creation year, a ratio, a bar), the detail page says so rather than picking a
-            winner silently. Taste notes are ours; historical claims are only included when a cited page supports them.
-          </p>
+          <h2>{t.about.recipesTitle}</h2>
+          <p>{t.about.recipesP1}</p>
+          <p>{t.about.recipesP2}</p>
         </section>
 
         <section className="panel">
-          <h2>Classic vs Modern</h2>
+          <h2>{t.about.eraTitle}</h2>
           <p>
-            <span className="badge badge-classic">Classic</span> drinks are historically established and part of the
-            classic canon. <span className="badge badge-modern">Modern</span> drinks are contemporary creations with a
-            documented creator, bar and period — all eight appear in the IBA’s “New Era” list.
+            <span className="badge badge-classic">{t.era.classic}</span>
+            {t.about.eraP1a}
+            <span className="badge badge-modern">{t.era.modern}</span>
+            {t.about.eraP1b}
           </p>
-          <p>
-            A few drinks the IBA files as “Contemporary Classics” (such as the Margarita and Mojito) are labelled Classic
-            here because of their long documented history; each explains why on its page.
-          </p>
+          <p>{t.about.eraP2}</p>
         </section>
 
         <section className="panel">
-          <h2>“Make with what I have”</h2>
+          <h2>{t.about.barTitle}</h2>
           <ul className="rules">
-            <li>A cocktail is ready only when you have <strong>every</strong> required ingredient.</li>
-            <li>Ice and plain water are assumed. Everything else — including sugar and salt — must be in your bar.</li>
-            <li>Garnishes and ingredients the reference marks optional never block a match.</li>
-            <li>
-              Substitutions count only when the reference supports them — e.g. “bourbon or rye” in the Old Fashioned,
-              “Champagne or Prosecco” in the Old Cuban.
-            </li>
-            <li>Near-misses are shown separately, with the missing ingredients named.</li>
+            {t.about.barRules.map((r) => (
+              <li key={r}>{r}</li>
+            ))}
           </ul>
         </section>
 
         <section className="panel">
-          <h2>Today’s pick</h2>
+          <h2>{t.about.dailyTitle}</h2>
           <ul className="rules">
-            <li>One pick per local calendar day; it stays put all day, even after you open it.</li>
-            <li>Cocktails whose page you haven’t opened yet come first.</li>
-            <li>Once you’ve opened them all, the one you opened longest ago returns — avoiding yesterday’s pick when possible.</li>
-            <li>Only opening a cocktail’s page counts as “seen” — not scrolling past its card.</li>
+            {t.about.dailyRules.map((r) => (
+              <li key={r}>{r}</li>
+            ))}
           </ul>
         </section>
 
         <section className="panel">
-          <h2>Images</h2>
-          <p>
-            Every image is an original illustration drawn in code for this site — no photographs, stock images or
-            AI image generators. Each one is built from the drink’s specification: the glass, the approximate colour,
-            the ice and the garnish. They’re labelled “Illustration” wherever they appear.
-          </p>
+          <h2>{t.about.imagesTitle}</h2>
+          <p>{t.about.imagesP}</p>
         </section>
 
         <section className="panel">
-          <h2>Your data</h2>
-          <p>
-            No account, no server. Your bar, your viewing history and today’s pick are saved only in this browser’s
-            local storage.
-          </p>
-          <p className="muted small">
-            Currently stored: {bar.length} ingredient{bar.length === 1 ? '' : 's'}, {opened} opened cocktail
-            {opened === 1 ? '' : 's'}.
-          </p>
+          <h2>{t.about.languageTitle}</h2>
+          <p>{t.about.languageP}</p>
+          <div className="data-actions" role="group" aria-label={t.about.languageTitle}>
+            <button
+              type="button"
+              className={`btn btn-sm ${locale === 'en' ? 'btn-primary' : 'btn-ghost'}`}
+              aria-pressed={locale === 'en'}
+              onClick={() => setLocale('en')}
+              lang="en"
+            >
+              English
+            </button>
+            <button
+              type="button"
+              className={`btn btn-sm ${locale === 'zh' ? 'btn-primary' : 'btn-ghost'}`}
+              aria-pressed={locale === 'zh'}
+              onClick={() => setLocale('zh')}
+              lang="zh-Hans"
+            >
+              简体中文
+            </button>
+          </div>
+        </section>
+
+        <section className="panel">
+          <h2>{t.about.dataTitle}</h2>
+          <p>{t.about.dataP}</p>
+          <p className="muted small">{t.about.stored(bar.length, opened)}</p>
           <div className="data-actions">
             <button
               type="button"
@@ -103,10 +105,10 @@ export function AboutPage() {
               disabled={bar.length === 0}
               onClick={() => {
                 setBar([]);
-                setDone('Your bar has been cleared.');
+                setDone(t.about.barCleared);
               }}
             >
-              Clear my bar
+              {t.about.clearBar}
             </button>
             <button
               type="button"
@@ -114,10 +116,10 @@ export function AboutPage() {
               disabled={opened === 0}
               onClick={() => {
                 clearHistory();
-                setDone('Viewing history cleared. Today’s pick stays the same until tomorrow.');
+                setDone(t.about.historyCleared);
               }}
             >
-              Clear viewing history
+              {t.about.clearHistory}
             </button>
           </div>
           {done && (
@@ -128,7 +130,7 @@ export function AboutPage() {
         </section>
 
         <section className="panel">
-          <h2>References used</h2>
+          <h2>{t.about.refsTitle}</h2>
           <ul className="publisher-list">
             {[...publishers.entries()]
               .sort((a, b) => b[1] - a[1])
@@ -139,13 +141,13 @@ export function AboutPage() {
                 </li>
               ))}
           </ul>
-          <p className="muted small">Citations per publisher across all 24 drinks. All pages accessed 28 September 2026.</p>
+          <p className="muted small">{t.about.refsNote(cocktails.length)}</p>
         </section>
       </div>
 
       <p className="about-cta">
         <Link to="/discover" className="btn btn-primary">
-          Start exploring
+          {t.about.start}
         </Link>
       </p>
     </div>

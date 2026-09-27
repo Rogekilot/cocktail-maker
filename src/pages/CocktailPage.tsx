@@ -1,37 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { CocktailArt } from '../components/CocktailArt';
-import { CocktailCard, EraBadge, spiritLine } from '../components/CocktailCard';
+import { CocktailCard, EraBadge, useSpiritLine } from '../components/CocktailCard';
 import { IconArrowLeft, IconCheck, IconExternal, IconPlus } from '../components/Icons';
-import {
-  cocktailById,
-  cocktails,
-  FLAVOR_LABELS,
-  METHOD_LABELS,
-  STRENGTH_LABELS,
-} from '../data/cocktails';
-import { ingredientIndex } from '../data/ingredients';
-import type { Cocktail, IceKey, SourceRole } from '../data/types';
+import type { Cocktail } from '../data/types';
+import { useI18n } from '../i18n/I18n';
 import { useAppState } from '../lib/AppState';
 import { lineLabel, matchCocktail } from '../lib/matching';
 import { formatAmount } from '../lib/units';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { NotFoundPage } from './NotFoundPage';
-
-const ICE_LABELS: Record<IceKey, string> = {
-  none: 'No ice in the glass (served up)',
-  cubes: 'Over ice cubes',
-  'large-cube': 'Over a large ice cube',
-  crushed: 'Over crushed ice',
-};
-
-const ROLE_LABELS: Record<SourceRole, string> = {
-  formula: 'Recipe',
-  provenance: 'Provenance',
-  history: 'History',
-  recognition: 'Recognition',
-  context: 'Context',
-};
 
 type UnitPref = 'ml' | 'oz';
 const UNIT_KEY = 'cocktail-maker:v1:unit-pref';
@@ -55,7 +33,7 @@ function useUnitPref(): [UnitPref, (u: UnitPref) => void] {
   return [pref, set];
 }
 
-function similar(c: Cocktail): Cocktail[] {
+function similar(c: Cocktail, cocktails: Cocktail[]): Cocktail[] {
   return cocktails
     .filter((x) => x.id !== c.id)
     .map((x) => ({
@@ -72,12 +50,15 @@ function similar(c: Cocktail): Cocktail[] {
 
 export function CocktailPage() {
   const { id = '' } = useParams();
-  const c = cocktailById[id];
+  const { byId } = useI18n();
+  const c = byId[id];
   if (!c) return <NotFoundPage />;
   return <CocktailDetail key={c.id} c={c} />;
 }
 
 function CocktailDetail({ c }: { c: Cocktail }) {
+  const { t, cocktails, ingredientIndex, labels, locale, enName } = useI18n();
+  const spiritLine = useSpiritLine();
   useDocumentTitle(c.name);
   const navigate = useNavigate();
   const { markOpened, barSet, bar, addIngredient, daily } = useAppState();
@@ -89,7 +70,7 @@ function CocktailDetail({ c }: { c: Cocktail }) {
   }, [c.id, markOpened]);
 
   const match = useMemo(() => matchCocktail(c, barSet, ingredientIndex), [c, barSet]);
-  const more = useMemo(() => similar(c), [c]);
+  const more = useMemo(() => similar(c, cocktails), [c, cocktails]);
   const formula = c.sources[c.formulaSource];
   const isToday = daily.id === c.id;
 
@@ -101,7 +82,7 @@ function CocktailDetail({ c }: { c: Cocktail }) {
           className="back-link"
           onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/discover'))}
         >
-          <IconArrowLeft width={18} height={18} /> Back
+          <IconArrowLeft width={18} height={18} /> {t.detail.back}
         </button>
       </div>
 
@@ -109,49 +90,52 @@ function CocktailDetail({ c }: { c: Cocktail }) {
         <figure className="detail-art" style={{ background: c.illustration.backdrop }}>
           <CocktailArt spec={c.illustration} title={c.name} />
           <figcaption>
-            <span className="badge badge-illustration">Illustration</span>
-            <span className="sr-only">
-              Original illustration of a {c.name}: {c.glassName.toLowerCase()}, {ICE_LABELS[c.ice].toLowerCase()}.
-            </span>
+            <span className="badge badge-illustration">{t.illustration}</span>
+            <span className="sr-only">{t.detail.illustrationAlt(c.name, c.glassName, t.ice[c.ice])}</span>
           </figcaption>
         </figure>
 
         <div className="detail-intro">
           <div className="detail-badges">
             <EraBadge era={c.era} />
-            {isToday && <span className="badge badge-today">Today’s pick</span>}
+            {isToday && <span className="badge badge-today">{t.detail.todaysPick}</span>}
             {match.makeable && (
               <span className="badge badge-ok">
-                <IconCheck width={12} height={12} /> You can make this
+                <IconCheck width={12} height={12} /> {t.detail.canMake}
               </span>
             )}
           </div>
           <h1>{c.name}</h1>
+          {locale === 'zh' && (
+            <p className="detail-en" lang="en">
+              {enName(c.id)}
+            </p>
+          )}
           <p className="detail-tagline">{c.tagline}</p>
           <p className="detail-desc">{c.description}</p>
 
           <dl className="quick-facts">
             <div>
-              <dt>Base</dt>
+              <dt>{t.detail.base}</dt>
               <dd>{spiritLine(c)}</dd>
             </div>
             <div>
-              <dt>Method</dt>
-              <dd>{METHOD_LABELS[c.method]}</dd>
+              <dt>{t.detail.method}</dt>
+              <dd>{labels.method[c.method]}</dd>
             </div>
             <div>
-              <dt>Strength</dt>
-              <dd>{STRENGTH_LABELS[c.strength]}</dd>
+              <dt>{t.detail.strength}</dt>
+              <dd>{labels.strength[c.strength]}</dd>
             </div>
             <div>
-              <dt>Flavour</dt>
-              <dd>{c.flavors.map((f) => FLAVOR_LABELS[f]).join(', ')}</dd>
+              <dt>{t.detail.flavour}</dt>
+              <dd>{c.flavors.map((f) => labels.flavor[f]).join(t.detail.listJoin)}</dd>
             </div>
           </dl>
 
           {c.provenance && (
             <div className="provenance">
-              <p className="eyebrow">Origin</p>
+              <p className="eyebrow">{t.detail.origin}</p>
               <p>
                 <strong>{c.provenance.creator}</strong>
                 {c.provenance.bar && <> · {c.provenance.bar}</>}
@@ -168,8 +152,8 @@ function CocktailDetail({ c }: { c: Cocktail }) {
         <div className="detail-main">
           <section className="panel" aria-labelledby="ing-h">
             <div className="panel-head">
-              <h2 id="ing-h">Ingredients</h2>
-              <div className="unit-toggle" role="group" aria-label="Show measurements first in">
+              <h2 id="ing-h">{t.detail.ingredients}</h2>
+              <div className="unit-toggle" role="group" aria-label={t.detail.unitGroup}>
                 <button type="button" aria-pressed={unit === 'ml'} onClick={() => setUnit('ml')}>
                   ml
                 </button>
@@ -181,17 +165,19 @@ function CocktailDetail({ c }: { c: Cocktail }) {
             {bar.length > 0 && (
               <p className={`bar-check ${match.makeable ? 'ok' : 'warn'}`}>
                 {match.makeable
-                  ? 'You have everything you need.'
+                  ? t.detail.haveAll
                   : match.haveCount === 0
-                    ? 'None of the required ingredients are in your bar yet.'
-                    : `You have ${match.haveCount} of ${match.requiredCount} required ingredients — missing ${match.missing
-                      .map((l) => lineLabel(l, ingredientIndex))
-                      .join(', ')}.`}
+                    ? t.detail.haveNone
+                    : t.detail.haveSome(
+                        match.haveCount,
+                        match.requiredCount,
+                        match.missing.map((l) => lineLabel(l, ingredientIndex, locale)).join(t.detail.listJoin),
+                      )}
               </p>
             )}
             <ul className="ing-list">
               {match.lines.map(({ line, available }, i) => {
-                const f = formatAmount(line);
+                const f = formatAmount(line, locale);
                 const hasVolume = !!(f.metric && f.imperial);
                 const first = hasVolume ? (unit === 'ml' ? f.metric : f.imperial) : f.primary;
                 const second = hasVolume
@@ -202,7 +188,7 @@ function CocktailDetail({ c }: { c: Cocktail }) {
                       : f.metric
                   : undefined;
                 const always = line.ingredients.some((x) => ingredientIndex[x].alwaysAvailable);
-                const label = lineLabel(line, ingredientIndex);
+                const label = lineLabel(line, ingredientIndex, locale);
                 return (
                   <li key={i} className="ing-row">
                     <div className="ing-amount">
@@ -212,25 +198,25 @@ function CocktailDetail({ c }: { c: Cocktail }) {
                     <div className="ing-name">
                       <span>
                         {label}
-                        {line.optional && <span className="tag">Optional</span>}
+                        {line.optional && <span className="tag">{t.detail.optional}</span>}
                       </span>
                       {line.note && <small>{line.note}</small>}
                     </div>
                     <div className="ing-status">
                       {always ? (
-                        <span className="muted small">Always on hand</span>
+                        <span className="muted small">{t.detail.alwaysOnHand}</span>
                       ) : available ? (
-                        <span className="have" title="In your bar">
+                        <span className="have" title={t.detail.inBar}>
                           <IconCheck width={18} height={18} />
-                          <span className="sr-only">In your bar</span>
+                          <span className="sr-only">{t.detail.inBar}</span>
                         </span>
                       ) : bar.length > 0 ? (
                         <button
                           type="button"
                           className="add-mini"
                           onClick={() => addIngredient(line.ingredients[0])}
-                          aria-label={`I have ${label}`}
-                          title="Add to My Bar"
+                          aria-label={t.detail.iHave(label)}
+                          title={t.detail.addToBar}
                         >
                           <IconPlus width={16} height={16} />
                         </button>
@@ -241,12 +227,12 @@ function CocktailDetail({ c }: { c: Cocktail }) {
               })}
             </ul>
             <p className="unit-note muted small">
-              Converted at the bar-standard 30 ml = 1 oz. “≈” marks rounded conversions.
+              {t.detail.unitNote}
             </p>
           </section>
 
           <section className="panel" aria-labelledby="method-h">
-            <h2 id="method-h">Method</h2>
+            <h2 id="method-h">{t.detail.methodTitle}</h2>
             <ol className="steps">
               {c.steps.map((s, i) => (
                 <li key={i}>{s}</li>
@@ -254,49 +240,49 @@ function CocktailDetail({ c }: { c: Cocktail }) {
             </ol>
             {c.tips && c.tips.length > 0 && (
               <div className="tip">
-                <strong>Bartender’s note</strong>
+                <strong>{t.detail.tipTitle}</strong>
                 {c.tips.map((t, i) => (
                   <p key={i}>{t}</p>
                 ))}
-                <p className="muted small">Our practical tip — not part of the referenced recipe.</p>
+                <p className="muted small">{t.detail.tipNote}</p>
               </div>
             )}
           </section>
 
           <section className="panel" aria-labelledby="serve-h">
-            <h2 id="serve-h">Glass, ice & garnish</h2>
+            <h2 id="serve-h">{t.detail.serveTitle}</h2>
             <dl className="serve">
               <div>
-                <dt>Glass</dt>
+                <dt>{t.detail.glass}</dt>
                 <dd>{c.glassName}</dd>
               </div>
               <div>
-                <dt>Ice</dt>
-                <dd>{ICE_LABELS[c.ice]}</dd>
+                <dt>{t.detail.ice}</dt>
+                <dd>{t.ice[c.ice]}</dd>
               </div>
               <div>
-                <dt>Garnish</dt>
+                <dt>{t.detail.garnish}</dt>
                 <dd>
                   {c.garnish.length === 0
-                    ? 'None in the referenced recipe'
-                    : c.garnish.map((g) => g.text).join('; ')}
+                    ? t.detail.noGarnish
+                    : c.garnish.map((g) => g.text).join(t.detail.garnishJoin)}
                 </dd>
               </div>
             </dl>
             <p className="muted">{c.presentation}</p>
-            {c.garnish.length > 0 && <p className="muted small">Garnishes are optional for “My Bar” matching.</p>}
+            {c.garnish.length > 0 && <p className="muted small">{t.detail.garnishOptional}</p>}
           </section>
         </div>
 
         <aside className="detail-side">
           {c.facts.length > 0 && (
             <section className="panel" aria-labelledby="story-h">
-              <h2 id="story-h">The story</h2>
+              <h2 id="story-h">{t.detail.story}</h2>
               <ul className="facts">
                 {c.facts.map((f, i) => (
                   <li key={i}>
                     {f.text}{' '}
-                    <a href={`#source-${f.source + 1}`} className="cite" aria-label={`Source ${f.source + 1}`}>
+                    <a href={`#source-${f.source + 1}`} className="cite" aria-label={t.detail.sourceN(f.source + 1)}>
                       [{f.source + 1}]
                     </a>
                   </li>
@@ -306,19 +292,16 @@ function CocktailDetail({ c }: { c: Cocktail }) {
           )}
 
           <section className="panel" aria-labelledby="class-h">
-            <h2 id="class-h">Why “{c.era === 'classic' ? 'Classic' : 'Modern'}”?</h2>
+            <h2 id="class-h">{t.detail.whyEra(t.era[c.era])}</h2>
             <p className="muted">
-              {c.eraNote ??
-                (c.era === 'classic'
-                  ? 'A historically established drink listed in the IBA’s canon of classic cocktails.'
-                  : 'A contemporary creation with a documented creator, bar and period, listed by the IBA among its “New Era” drinks.')}
+              {c.eraNote ?? (c.era === 'classic' ? t.detail.whyClassic : t.detail.whyModern)}
             </p>
           </section>
 
           <section className="panel sources" aria-labelledby="src-h" id="sources">
-            <h2 id="src-h">Sources</h2>
+            <h2 id="src-h">{t.detail.sources}</h2>
             <p className="formula-line">
-              <strong>Recipe follows:</strong> {formula.title} ({formula.publisher}).
+              <strong>{t.detail.recipeFollows}</strong> {formula.title} ({formula.publisher}).
             </p>
             {c.formulaNote && <p className="muted small">{c.formulaNote}</p>}
             <ol className="source-list">
@@ -329,23 +312,22 @@ function CocktailDetail({ c }: { c: Cocktail }) {
                   </a>
                   <span className="source-pub">{s.publisher}</span>
                   <span className="source-roles">
-                    {i === c.formulaSource && <span className="tag tag-strong">Formula</span>}
+                    {i === c.formulaSource && <span className="tag tag-strong">{t.detail.formula}</span>}
                     {s.roles
                       .filter((r) => !(r === 'formula' && i === c.formulaSource))
                       .map((r) => (
                         <span key={r} className="tag">
-                          {ROLE_LABELS[r]}
+                          {t.roles[r]}
                         </span>
                       ))}
                   </span>
                   <span className="source-supports">{s.supports}</span>
-                  <span className="source-accessed">Accessed {s.accessed}</span>
+                  <span className="source-accessed">{t.detail.accessed(s.accessed)}</span>
                 </li>
               ))}
             </ol>
             <p className="muted small image-credit">
-              Image: original illustration created for Cocktail Maker (not a photograph), drawn to reflect the glass,
-              colour, ice and garnish described above.
+              {t.detail.imageCredit}
             </p>
           </section>
         </aside>
@@ -354,7 +336,7 @@ function CocktailDetail({ c }: { c: Cocktail }) {
       <div className="container">
         <section className="section">
           <div className="section-head">
-            <h2>You might also like</h2>
+            <h2>{t.detail.alsoLike}</h2>
           </div>
           <div className="card-grid">
             {more.map((m) => (
@@ -363,7 +345,7 @@ function CocktailDetail({ c }: { c: Cocktail }) {
           </div>
           <p style={{ marginTop: 20 }}>
             <Link to="/discover" className="btn btn-ghost">
-              Browse all cocktails
+              {t.detail.browseAll}
             </Link>
           </p>
         </section>

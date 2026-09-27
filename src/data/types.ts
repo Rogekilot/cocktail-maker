@@ -83,6 +83,8 @@ export type SpiritKey =
   | 'mezcal'
   | 'brandy'
   | 'vodka'
+  | 'pisco'
+  | 'cachaca'
   | 'none';
 
 export type FlavorKey =
@@ -96,11 +98,24 @@ export type FlavorKey =
   | 'bubbly'
   | 'coffee'
   | 'fruity'
-  | 'spicy';
+  | 'spicy'
+  | 'creamy'
+  | 'tropical'
+  | 'savory'
+  | 'floral';
 
-export type StyleKey = 'sour' | 'stirred' | 'highball' | 'sparkling' | 'smash' | 'muddled';
+export type StyleKey =
+  | 'sour'
+  | 'stirred'
+  | 'highball'
+  | 'sparkling'
+  | 'smash'
+  | 'muddled'
+  | 'tiki'
+  | 'hot'
+  | 'creamy';
 
-export type MethodKey = 'shaken' | 'stirred' | 'built' | 'muddled' | 'swizzled';
+export type MethodKey = 'shaken' | 'stirred' | 'built' | 'muddled' | 'swizzled' | 'blended';
 
 export type Strength = 'light' | 'medium' | 'strong';
 
@@ -112,7 +127,10 @@ export type GlassKey =
   | 'collins'
   | 'flute'
   | 'mule'
-  | 'julep';
+  | 'julep'
+  | 'irish'
+  | 'hurricane'
+  | 'wine';
 
 export type IceKey = 'none' | 'cubes' | 'large-cube' | 'crushed';
 
@@ -131,7 +149,19 @@ export type GarnishArt =
   | 'coffee-beans'
   | 'salt-rim'
   | 'ginger'
-  | 'straw';
+  | 'straw'
+  | 'raspberry'
+  | 'nutmeg'
+  | 'bitters-drops'
+  | 'lime-chunks'
+  | 'pineapple'
+  | 'celery'
+  | 'lemon-wedge'
+  | 'cherry-rim'
+  | 'sugar-cube'
+  | 'passion-fruit'
+  | 'grapefruit-twist'
+  | 'orange-wheel';
 
 export interface IllustrationSpec {
   glass: GlassKey;
@@ -145,6 +175,8 @@ export interface IllustrationSpec {
   fill: number;
   ice: IceKey;
   foam?: string;
+  /** Foam / cream layer thickness as a fraction of the glass depth (default 0.09). */
+  foamDepth?: number;
   bubbles?: boolean;
   /** Color of a liqueur drizzle / float bleeding in from the top. */
   float?: string;

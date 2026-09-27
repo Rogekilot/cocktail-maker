@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { Layout } from './components/Layout';
+import { I18nProvider } from './i18n/I18n';
 import { AppStateProvider } from './lib/AppState';
 import { AboutPage } from './pages/AboutPage';
 import { BarPage } from './pages/BarPage';
@@ -28,8 +29,10 @@ const router = createBrowserRouter([
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <AppStateProvider>
-      <RouterProvider router={router} />
-    </AppStateProvider>
+    <I18nProvider>
+      <AppStateProvider>
+        <RouterProvider router={router} />
+      </AppStateProvider>
+    </I18nProvider>
   </StrictMode>,
 );

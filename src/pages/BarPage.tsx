@@ -3,30 +3,41 @@ import { Link } from 'react-router-dom';
 import { CocktailArt } from '../components/CocktailArt';
 import { CocktailCard, EraBadge } from '../components/CocktailCard';
 import { IconCheck, IconPlus, IconSearch, IconX } from '../components/Icons';
-import { cocktails } from '../data/cocktails';
-import { ingredientIndex, ingredients, PICKER_GROUPS, searchIngredients } from '../data/ingredients';
+import { PICKER_GROUPS, searchIngredients } from '../data/ingredients';
+import { useI18n } from '../i18n/I18n';
 import { useAppState } from '../lib/AppState';
 import { lineLabel, matchAll, unlockSuggestions } from '../lib/matching';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 
 const SAMPLE_BAR = ['gin', 'bourbon', 'campari', 'sweet-vermouth', 'lemon', 'lime', 'simple-syrup', 'angostura', 'soda-water'];
 
-/** Ingredients used by at least one recipe line or garnish. */
-const USED = new Set(
-  cocktails.flatMap((c) => [
-    ...c.recipe.flatMap((l) => l.ingredients),
-    ...c.garnish.flatMap((g) => (g.ingredient ? [g.ingredient] : [])),
-  ]),
-);
+function useUsedIngredients() {
+  const { cocktails } = useI18n();
+  return useMemo(
+    () =>
+      new Set(
+        cocktails.flatMap((c) => [
+          ...c.recipe.flatMap((l) => l.ingredients),
+          ...c.garnish.flatMap((g) => (g.ingredient ? [g.ingredient] : [])),
+        ]),
+      ),
+    [cocktails],
+  );
+}
 
 function IngredientSearch() {
   const { barSet, addIngredient } = useAppState();
+  const { t, ingredients } = useI18n();
+  const used = useUsedIngredients();
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
   const [open, setOpen] = useState(false);
   const listId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
-  const results = useMemo(() => searchIngredients(query).filter((i) => USED.has(i.id)).slice(0, 8), [query]);
+  const results = useMemo(
+    () => searchIngredients(query, ingredients).filter((i) => used.has(i.id)).slice(0, 8),
+    [query, ingredients, used],
+  );
 
   const choose = (id: string) => {
     addIngredient(id);
@@ -39,7 +50,7 @@ function IngredientSearch() {
     <div className="ing-search">
       <label className="search-field">
         <IconSearch width={20} height={20} aria-hidden />
-        <span className="sr-only">Add an ingredient</span>
+        <span className="sr-only">{t.bar.addLabel}</span>
         <input
           ref={inputRef}
           type="text"
@@ -48,7 +59,7 @@ function IngredientSearch() {
           aria-controls={listId}
           aria-autocomplete="list"
           aria-activedescendant={open && results[active] ? `${listId}-${results[active].id}` : undefined}
-          placeholder="Type an ingredient — e.g. gin, lime, Campari"
+          placeholder={t.bar.addPlaceholder}
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -58,6 +69,7 @@ function IngredientSearch() {
           onFocus={() => setOpen(true)}
           onBlur={() => window.setTimeout(() => setOpen(false), 120)}
           onKeyDown={(e) => {
+            if (e.nativeEvent.isComposing) return; // IME (e.g. pinyin) composition in progress
             if (e.key === 'ArrowDown') {
               e.preventDefault();
               setActive((a) => Math.min(a + 1, results.length - 1));
@@ -75,7 +87,7 @@ function IngredientSearch() {
       </label>
       {open && query && (
         <ul className="ing-results" id={listId} role="listbox">
-          {results.length === 0 && <li className="ing-empty">No matching ingredient — none of our recipes use it.</li>}
+          {results.length === 0 && <li className="ing-empty">{t.bar.noMatch}</li>}
           {results.map((ing, i) => {
             const have = barSet.has(ing.id);
             return (
@@ -98,7 +110,7 @@ function IngredientSearch() {
                 </span>
                 {have ? (
                   <span className="ing-have">
-                    <IconCheck width={16} height={16} /> In your bar
+                    <IconCheck width={16} height={16} /> {t.bar.inYourBar}
                   </span>
                 ) : (
                   <IconPlus width={18} height={18} />
@@ -113,8 +125,10 @@ function IngredientSearch() {
 }
 
 export function BarPage() {
-  useDocumentTitle('My Bar');
+  const { t, cocktails, ingredients, ingredientIndex, labels, locale, collator } = useI18n();
+  useDocumentTitle(t.bar.title);
   const { bar, barSet, toggleIngredient, removeIngredient, addIngredient, setBar } = useAppState();
+  const used = useUsedIngredients();
   const [confirmClear, setConfirmClear] = useState(false);
   const resultsRef = useRef<HTMLElement>(null);
   const [resultsVisible, setResultsVisible] = useState(false);
@@ -127,37 +141,48 @@ export function BarPage() {
     return () => io.disconnect();
   }, []);
 
-  const { makeable, nearMisses } = useMemo(() => matchAll(cocktails, barSet, ingredientIndex, 2), [barSet]);
-  const suggestions = useMemo(() => unlockSuggestions(cocktails, barSet, ingredientIndex, 4), [barSet]);
+  const { makeable, nearMisses } = useMemo(
+    () => matchAll(cocktails, barSet, ingredientIndex, 2),
+    [cocktails, barSet, ingredientIndex],
+  );
+  const readyList = useMemo(
+    () => [...makeable].sort((a, b) => collator.compare(a.cocktail.name, b.cocktail.name)),
+    [makeable, collator],
+  );
+  const suggestions = useMemo(
+    () => unlockSuggestions(cocktails, barSet, ingredientIndex, 4),
+    [cocktails, barSet, ingredientIndex],
+  );
   const oneAway = nearMisses.filter((r) => r.missing.length === 1);
   const twoAway = nearMisses.filter((r) => r.missing.length === 2);
 
-  const sortedBar = [...bar].sort((a, b) => ingredientIndex[a].name.localeCompare(ingredientIndex[b].name));
+  const sortedBar = [...bar].sort((a, b) => collator.compare(ingredientIndex[a].name, ingredientIndex[b].name));
 
   return (
     <div className="container bar-page">
       <header className="page-head">
-        <p className="eyebrow">Make with what I have</p>
-        <h1>My Bar</h1>
+        <p className="eyebrow">{t.bar.eyebrow}</p>
+        <h1>{t.bar.title}</h1>
         <p className="muted page-lede">
-          Add what you have at home. A cocktail shows as ready only when you have <strong>every</strong> required
-          ingredient. Ice and plain water are assumed; everything else — even sugar and salt — needs to be on your list.
+          {t.bar.ledeA}
+          <strong>{t.bar.ledeEvery}</strong>
+          {t.bar.ledeB}
         </p>
       </header>
 
       <div className="bar-layout">
-        <aside className="bar-panel" aria-label="Your ingredients">
+        <aside className="bar-panel" aria-label={t.bar.panelLabel}>
           <IngredientSearch />
 
           <div className="bar-current">
             <div className="bar-current-head">
               <h2>
-                In your bar <span className="muted">({bar.length})</span>
+                {t.bar.inYourBar} <span className="muted">({bar.length})</span>
               </h2>
               {bar.length > 0 &&
                 (confirmClear ? (
                   <span className="confirm">
-                    Remove all?{' '}
+                    {t.bar.removeAllQ}{' '}
                     <button
                       type="button"
                       className="link-btn"
@@ -166,23 +191,23 @@ export function BarPage() {
                         setConfirmClear(false);
                       }}
                     >
-                      Yes, clear
+                      {t.bar.yesClear}
                     </button>{' '}
                     <button type="button" className="link-btn muted-link" onClick={() => setConfirmClear(false)}>
-                      Cancel
+                      {t.bar.cancel}
                     </button>
                   </span>
                 ) : (
                   <button type="button" className="link-btn" onClick={() => setConfirmClear(true)}>
-                    Clear all
+                    {t.bar.clearAll}
                   </button>
                 ))}
             </div>
             {bar.length === 0 ? (
               <div className="bar-empty">
-                <p>Your bar is empty. Search above or tap ingredients below.</p>
+                <p>{t.bar.empty}</p>
                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => setBar(SAMPLE_BAR)}>
-                  Try a sample home bar
+                  {t.bar.sample}
                 </button>
               </div>
             ) : (
@@ -193,7 +218,7 @@ export function BarPage() {
                       type="button"
                       className="pill"
                       onClick={() => removeIngredient(id)}
-                      aria-label={`Remove ${ingredientIndex[id].name}`}
+                      aria-label={t.bar.removeLabel(ingredientIndex[id].name)}
                     >
                       {ingredientIndex[id].name}
                       <IconX width={14} height={14} />
@@ -203,19 +228,19 @@ export function BarPage() {
               </ul>
             )}
             <p className="assumed">
-              <IconCheck width={14} height={14} /> Always assumed: ice & plain water
+              <IconCheck width={14} height={14} /> {t.bar.assumed}
             </p>
           </div>
 
           <div className="picker">
-            <h2>Browse ingredients</h2>
-            {PICKER_GROUPS.map((g) => {
+            <h2>{t.bar.browse}</h2>
+            {PICKER_GROUPS.map((g, gi) => {
               const items = ingredients.filter(
-                (i) => g.categories.includes(i.category) && !i.alwaysAvailable && USED.has(i.id),
+                (i) => g.categories.includes(i.category) && !i.alwaysAvailable && used.has(i.id),
               );
               return (
                 <div key={g.label} className="picker-group">
-                  <h3>{g.label}</h3>
+                  <h3>{labels.pickerGroups[gi]}</h3>
                   <div className="picker-chips">
                     {items.map((i) => {
                       const on = barSet.has(i.id);
@@ -240,35 +265,31 @@ export function BarPage() {
           </div>
         </aside>
 
-        <section className="bar-results" aria-live="polite" aria-label="What you can make" id="results" ref={resultsRef}>
+        <section className="bar-results" aria-live="polite" aria-label={t.bar.resultsLabel} id="results" ref={resultsRef}>
           <div className="bar-stat">
             <div>
               <span className="bar-stat-num">{makeable.length}</span>
-              <span className="bar-stat-label">ready to make</span>
+              <span className="bar-stat-label">{t.bar.statReady}</span>
             </div>
             <div>
               <span className="bar-stat-num">{oneAway.length}</span>
-              <span className="bar-stat-label">one ingredient away</span>
+              <span className="bar-stat-label">{t.bar.statOneAway}</span>
             </div>
             <div>
               <span className="bar-stat-num">{cocktails.length}</span>
-              <span className="bar-stat-label">in the library</span>
+              <span className="bar-stat-label">{t.bar.statLibrary}</span>
             </div>
           </div>
 
           <div className="results-block">
             <h2>
-              <span className="dot dot-ok" aria-hidden /> Ready to make
+              <span className="dot dot-ok" aria-hidden /> {t.bar.readyTitle}
             </h2>
-            {makeable.length === 0 ? (
-              <p className="muted results-empty">
-                {bar.length === 0
-                  ? 'Add ingredients to see what you can make.'
-                  : 'Nothing yet — every cocktail still needs at least one more ingredient. See “Almost there” below.'}
-              </p>
+            {readyList.length === 0 ? (
+              <p className="muted results-empty">{bar.length === 0 ? t.bar.readyEmptyNoBar : t.bar.readyEmpty}</p>
             ) : (
               <div className="card-grid">
-                {makeable.map((m) => (
+                {readyList.map((m) => (
                   <CocktailCard key={m.cocktail.id} cocktail={m.cocktail} status="ready" />
                 ))}
               </div>
@@ -278,9 +299,9 @@ export function BarPage() {
           {suggestions.length > 0 && (
             <div className="results-block">
               <h2>
-                <span className="dot dot-accent" aria-hidden /> Best next buys
+                <span className="dot dot-accent" aria-hidden /> {t.bar.nextBuys}
               </h2>
-              <p className="muted block-lede">Each of these completes at least one more recipe.</p>
+              <p className="muted block-lede">{t.bar.nextBuysLede}</p>
               <ul className="unlock-list">
                 {suggestions.map((s) => (
                   <li key={s.id}>
@@ -288,11 +309,11 @@ export function BarPage() {
                       <strong>{ingredientIndex[s.id].name}</strong>
                       <span className="muted">
                         {' '}
-                        unlocks {s.unlocks.map((c) => c.name).join(', ')}
+                        {t.bar.unlocks} {s.unlocks.map((c) => c.name).join(t.bar.listJoin)}
                       </span>
                     </div>
                     <button type="button" className="btn btn-ghost btn-sm" onClick={() => addIngredient(s.id)}>
-                      <IconPlus width={16} height={16} /> I have it
+                      <IconPlus width={16} height={16} /> {t.bar.iHaveIt}
                     </button>
                   </li>
                 ))}
@@ -303,9 +324,9 @@ export function BarPage() {
           {nearMisses.length > 0 && (
             <div className="results-block">
               <h2>
-                <span className="dot dot-warn" aria-hidden /> Almost there
+                <span className="dot dot-warn" aria-hidden /> {t.bar.almost}
               </h2>
-              <p className="muted block-lede">Not makeable yet — these are missing one or two required ingredients.</p>
+              <p className="muted block-lede">{t.bar.almostLede}</p>
               <ul className="miss-list">
                 {[...oneAway, ...twoAway].map((r) => (
                   <li key={r.cocktail.id} className="miss">
@@ -318,12 +339,10 @@ export function BarPage() {
                         <EraBadge era={r.cocktail.era} />
                       </div>
                       <p className="miss-need">
-                        <span className="badge badge-warn">Missing {r.missing.length}</span>{' '}
-                        {r.missing.map((l) => lineLabel(l, ingredientIndex)).join(' + ')}
+                        <span className="badge badge-warn">{t.bar.missingN(r.missing.length)}</span>{' '}
+                        {r.missing.map((l) => lineLabel(l, ingredientIndex, locale)).join(t.bar.plusJoin)}
                       </p>
-                      <p className="miss-have muted">
-                        You have {r.haveCount} of {r.requiredCount} required ingredients
-                      </p>
+                      <p className="miss-have muted">{t.bar.haveOf(r.haveCount, r.requiredCount)}</p>
                     </div>
                   </li>
                 ))}
@@ -339,10 +358,10 @@ export function BarPage() {
           className="bar-jump"
           onClick={() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
         >
-          <span className="dot dot-ok" aria-hidden /> {makeable.length} ready
+          <span className="dot dot-ok" aria-hidden /> {t.bar.jumpReady(makeable.length)}
           <span className="bar-jump-sep" aria-hidden />
-          <span className="dot dot-warn" aria-hidden /> {oneAway.length} one away
-          <strong>See results ↓</strong>
+          <span className="dot dot-warn" aria-hidden /> {t.bar.jumpOneAway(oneAway.length)}
+          <strong>{t.bar.jumpSee}</strong>
         </button>
       )}
     </div>

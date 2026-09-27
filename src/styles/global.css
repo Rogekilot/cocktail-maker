@@ -29,8 +29,9 @@
   --radius-sm: 12px;
   --shadow: 0 1px 2px rgb(40 25 10 / 6%), 0 8px 24px -8px rgb(40 25 10 / 18%);
   --shadow-lg: 0 2px 4px rgb(40 25 10 / 6%), 0 22px 48px -18px rgb(40 25 10 / 35%);
-  --font-display: 'Fraunces Variable', Georgia, 'Times New Roman', serif;
-  --font-body: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Fraunces Variable', Georgia, 'Times New Roman', 'Songti SC', 'Noto Serif SC', 'Source Han Serif SC', serif;
+  --font-body: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', 'Noto Sans SC', sans-serif;
   --max: 1240px;
   --gutter: clamp(16px, 4vw, 40px);
   --header-h: 64px;
@@ -201,6 +202,76 @@ p {
   gap: 4px;
 }
 
+.lang-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  font-weight: 650;
+  font-size: 0.85rem;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.lang-toggle:hover {
+  border-color: var(--ink-3);
+}
+
+/* Chinese: CJK-friendly headings and line breaking */
+:lang(zh) h1,
+:lang(zh) h2,
+:lang(zh) h3,
+:lang(zh) .card-title,
+:lang(zh) .collection-name,
+:lang(zh) .spirit-tile-name,
+:lang(zh) .miss-title a {
+  font-family: 'Songti SC', 'Noto Serif SC', 'Source Han Serif SC', 'STSong', var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+:lang(zh) body,
+:lang(zh) p {
+  line-break: strict;
+}
+
+:lang(zh) .eyebrow,
+:lang(zh) .badge,
+:lang(zh) .facet-label,
+:lang(zh) .quick-facts dt,
+:lang(zh) .serve dt,
+:lang(zh) .picker-group h3 {
+  letter-spacing: 0.06em;
+}
+
+.card-en,
+.hero-en,
+.detail-en {
+  font-family: var(--font-display);
+  font-style: italic;
+  color: var(--ink-3);
+}
+
+.card-en {
+  font-size: 0.8rem;
+  margin-top: -2px;
+}
+
+.hero-en {
+  margin-top: 6px;
+  font-size: 1.1rem;
+  color: var(--on-dark-2);
+}
+
+.detail-en {
+  margin-top: -6px;
+  font-size: 1.15rem;
+}
+
 .nav a {
   text-decoration: none;
   padding: 8px 14px;
@@ -249,6 +320,10 @@ p {
 
   .site-header .nav {
     display: none;
+  }
+
+  .brand {
+    font-size: 1.1rem;
   }
 
   .tabbar {

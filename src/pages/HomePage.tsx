@@ -1,46 +1,49 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { CocktailArt } from '../components/CocktailArt';
-import { CocktailCard, EraBadge, spiritLine } from '../components/CocktailCard';
+import { CocktailCard, EraBadge, useSpiritLine } from '../components/CocktailCard';
 import { IconArrowRight, IconSparkle } from '../components/Icons';
-import { cocktailById, cocktails, SPIRIT_LABELS } from '../data/cocktails';
-import { ingredientIndex } from '../data/ingredients';
 import type { SpiritKey } from '../data/types';
+import { useI18n } from '../i18n/I18n';
 import { useAppState } from '../lib/AppState';
 import { matchAll } from '../lib/matching';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 
-const SPIRIT_TILES: { key: SpiritKey; color: string; ids: string }[] = [
-  { key: 'gin', color: '#27344d', ids: 'dry-martini' },
-  { key: 'whiskey', color: '#2c5163', ids: 'old-fashioned' },
-  { key: 'rum', color: '#1f5a4d', ids: 'mojito' },
-  { key: 'tequila', color: '#d4693f', ids: 'tommys-margarita' },
-  { key: 'mezcal', color: '#2c2946', ids: 'naked-and-famous' },
-  { key: 'brandy', color: '#4a2c40', ids: 'sidecar' },
-  { key: 'vodka', color: '#b6d9c8', ids: 'espresso-martini' },
+const SPIRIT_TILES: { key: SpiritKey; color: string; id: string }[] = [
+  { key: 'gin', color: '#27344d', id: 'dry-martini' },
+  { key: 'whiskey', color: '#2c5163', id: 'old-fashioned' },
+  { key: 'rum', color: '#1f5e63', id: 'mai-tai' },
+  { key: 'tequila', color: '#d4693f', id: 'tommys-margarita' },
+  { key: 'mezcal', color: '#2c2946', id: 'naked-and-famous' },
+  { key: 'brandy', color: '#4a2c40', id: 'sidecar' },
+  { key: 'vodka', color: '#b6d9c8', id: 'moscow-mule' },
 ];
-
-function formatToday(dateKey: string): string {
-  const [y, m, d] = dateKey.split('-').map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
-}
 
 export function HomePage() {
   useDocumentTitle();
+  const { t, cocktails, byId, ingredientIndex, labels, locale, enName, formatDateKey, collator } = useI18n();
+  const spiritLine = useSpiritLine();
   const { daily, history, barSet, bar } = useAppState();
-  const pick = cocktailById[daily.id];
+  const pick = byId[daily.id];
   const seenPick = history[pick.id] != null;
-  const openedCount = Object.keys(history).filter((id) => cocktailById[id]).length;
+  const openedCount = Object.keys(history).filter((id) => byId[id]).length;
 
-  const { makeable, nearMisses } = useMemo(() => matchAll(cocktails, barSet, ingredientIndex, 1), [barSet]);
+  const { makeable, nearMisses } = useMemo(
+    () => matchAll(cocktails, barSet, ingredientIndex, 1),
+    [cocktails, barSet, ingredientIndex],
+  );
+  const readyList = useMemo(
+    () => [...makeable].sort((a, b) => collator.compare(a.cocktail.name, b.cocktail.name)),
+    [makeable, collator],
+  );
   const recent = useMemo(
     () =>
       Object.entries(history)
-        .filter(([id]) => cocktailById[id])
+        .filter(([id]) => byId[id])
         .sort((a, b) => b[1] - a[1])
         .slice(0, 8)
-        .map(([id]) => cocktailById[id]),
-    [history],
+        .map(([id]) => byId[id]),
+    [history, byId],
   );
 
   const classicList = cocktails.filter((c) => c.era === 'classic');
@@ -53,9 +56,14 @@ export function HomePage() {
         <div className="container hero-inner">
           <div className="hero-copy">
             <p className="hero-kicker">
-              <IconSparkle width={16} height={16} /> Today’s pick · {formatToday(daily.date)}
+              <IconSparkle width={16} height={16} /> {t.home.kicker(formatDateKey(daily.date))}
             </p>
             <h1>{pick.name}</h1>
+            {locale === 'zh' && (
+              <p className="hero-en" lang="en">
+                {enName(pick.id)}
+              </p>
+            )}
             <div className="hero-meta">
               <EraBadge era={pick.era} />
               <span>{spiritLine(pick)}</span>
@@ -64,23 +72,19 @@ export function HomePage() {
             <p className="hero-tagline">{pick.tagline}</p>
             <div className="hero-actions">
               <Link to={`/cocktail/${pick.id}`} className="btn btn-light">
-                {seenPick ? 'Make it again' : 'See the recipe'} <IconArrowRight width={18} height={18} />
+                {seenPick ? t.home.makeAgain : t.home.seeRecipe} <IconArrowRight width={18} height={18} />
               </Link>
               <Link to="/discover" className="btn btn-ghost-dark">
-                Explore all 24
+                {t.home.exploreAll(cocktails.length)}
               </Link>
             </div>
             <p className="hero-note">
-              {openedCount >= cocktails.length
-                ? 'You’ve opened every cocktail — each new day now brings back the one you opened longest ago.'
-                : `A new pick every day, favouring drinks you haven’t opened yet${
-                    openedCount > 0 ? ` — you’ve explored ${openedCount} of ${cocktails.length}` : ''
-                  }.`}
+              {openedCount >= cocktails.length ? t.home.noteAllSeen : t.home.noteFresh(openedCount, cocktails.length)}
             </p>
           </div>
-          <Link to={`/cocktail/${pick.id}`} className="hero-art" aria-label={`Open ${pick.name}`}>
+          <Link to={`/cocktail/${pick.id}`} className="hero-art" aria-label={t.home.openLabel(pick.name)}>
             <CocktailArt spec={pick.illustration} title={pick.name} />
-            <span className="badge badge-illustration hero-art-label">Illustration</span>
+            <span className="badge badge-illustration hero-art-label">{t.illustration}</span>
           </Link>
         </div>
       </section>
@@ -91,41 +95,30 @@ export function HomePage() {
             {bar.length === 0 ? (
               <>
                 <div>
-                  <p className="eyebrow">Make with what you have</p>
-                  <h2>What’s in your bar?</h2>
-                  <p className="muted">
-                    Tick off the bottles, fruit and syrups you have and we’ll show exactly which cocktails you can
-                    make right now — and what you’re one ingredient away from.
-                  </p>
+                  <p className="eyebrow">{t.home.barEyebrowEmpty}</p>
+                  <h2>{t.home.barTitleEmpty}</h2>
+                  <p className="muted">{t.home.barTextEmpty}</p>
                 </div>
                 <Link to="/bar" className="btn btn-primary">
-                  Stock my bar <IconArrowRight width={18} height={18} />
+                  {t.home.stockBar} <IconArrowRight width={18} height={18} />
                 </Link>
               </>
             ) : (
               <>
                 <div>
-                  <p className="eyebrow">From your bar · {bar.length} ingredients</p>
-                  <h2>
-                    {makeable.length === 0
-                      ? 'Nothing ready yet'
-                      : `You can make ${makeable.length} cocktail${makeable.length === 1 ? '' : 's'} right now`}
-                  </h2>
-                  <p className="muted">
-                    {nearMisses.length > 0
-                      ? `${nearMisses.length} more ${nearMisses.length === 1 ? 'is' : 'are'} just one ingredient away.`
-                      : 'Add a few more ingredients to unlock more drinks.'}
-                  </p>
+                  <p className="eyebrow">{t.home.barEyebrow(bar.length)}</p>
+                  <h2>{makeable.length === 0 ? t.home.nothingReady : t.home.canMake(makeable.length)}</h2>
+                  <p className="muted">{nearMisses.length > 0 ? t.home.oneAway(nearMisses.length) : t.home.addMore}</p>
                 </div>
                 <Link to="/bar" className="btn btn-primary">
-                  Open My Bar <IconArrowRight width={18} height={18} />
+                  {t.home.openBar} <IconArrowRight width={18} height={18} />
                 </Link>
               </>
             )}
           </div>
-          {makeable.length > 0 && (
+          {readyList.length > 0 && (
             <div className="shelf" style={{ marginTop: 18 }}>
-              {makeable.map((m) => (
+              {readyList.map((m) => (
                 <CocktailCard key={m.cocktail.id} cocktail={m.cocktail} status="ready" />
               ))}
             </div>
@@ -135,21 +128,26 @@ export function HomePage() {
         <section className="section">
           <div className="section-head">
             <div>
-              <h2>Browse by spirit</h2>
-              <p>Start with the bottle you love.</p>
+              <h2>{t.home.bySpirit}</h2>
+              <p>{t.home.bySpiritSub}</p>
             </div>
           </div>
           <div className="spirit-tiles">
-            {SPIRIT_TILES.map((t) => {
-              const count = cocktails.filter((c) => c.baseSpirits.includes(t.key)).length;
-              const c = cocktailById[t.ids];
+            {SPIRIT_TILES.map((tile) => {
+              const count = cocktails.filter((c) => c.baseSpirits.includes(tile.key)).length;
+              const c = byId[tile.id];
               return (
-                <Link key={t.key} to={`/discover?spirit=${t.key}`} className="spirit-tile" style={{ background: t.color }}>
+                <Link
+                  key={tile.key}
+                  to={`/discover?spirit=${tile.key}`}
+                  className="spirit-tile"
+                  style={{ background: tile.color }}
+                >
                   <div className="spirit-tile-art" aria-hidden>
-                    <CocktailArt spec={{ ...c.illustration, backdrop: t.color }} title={c.name} />
+                    <CocktailArt spec={{ ...c.illustration, backdrop: tile.color }} title={c.name} />
                   </div>
-                  <span className="spirit-tile-name">{SPIRIT_LABELS[t.key]}</span>
-                  <span className="spirit-tile-count">{count} drinks</span>
+                  <span className="spirit-tile-name">{labels.spirit[tile.key]}</span>
+                  <span className="spirit-tile-count">{t.home.drinks(count)}</span>
                 </Link>
               );
             })}
@@ -159,10 +157,10 @@ export function HomePage() {
         <section className="section">
           <div className="section-head">
             <div>
-              <h2>The classics</h2>
-              <p>Time-tested formulas from the cocktail canon.</p>
+              <h2>{t.home.classicsTitle}</h2>
+              <p>{t.home.classicsSub}</p>
             </div>
-            <Link to="/discover?era=classic">See all {classicList.length}</Link>
+            <Link to="/discover?era=classic">{t.home.seeAll(classicList.length)}</Link>
           </div>
           <div className="shelf">
             {classicList.map((c) => (
@@ -174,10 +172,10 @@ export function HomePage() {
         <section className="section">
           <div className="section-head">
             <div>
-              <h2>Modern classics</h2>
-              <p>Contemporary drinks with a documented creator, bar and year.</p>
+              <h2>{t.home.modernTitle}</h2>
+              <p>{t.home.modernSub}</p>
             </div>
-            <Link to="/discover?era=modern">See all {modernList.length}</Link>
+            <Link to="/discover?era=modern">{t.home.seeAll(modernList.length)}</Link>
           </div>
           <div className="shelf">
             {modernList.map((c) => (
@@ -190,7 +188,7 @@ export function HomePage() {
           <section className="section">
             <div className="section-head">
               <div>
-                <h2>Recently viewed</h2>
+                <h2>{t.home.recent}</h2>
               </div>
             </div>
             <div className="shelf">

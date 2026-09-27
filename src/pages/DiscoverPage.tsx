@@ -2,116 +2,74 @@ import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { CocktailCard } from '../components/CocktailCard';
 import { IconFilter, IconSearch, IconX } from '../components/Icons';
-import {
-  cocktails,
-  FLAVOR_LABELS,
-  requiredIngredientCount,
-  SPIRIT_LABELS,
-  STRENGTH_LABELS,
-  STYLE_LABELS,
-  METHOD_LABELS,
-} from '../data/cocktails';
-import { ingredientIndex, norm } from '../data/ingredients';
+import { requiredIngredientCount } from '../data/cocktails';
+import { ingredientIndex as enIngredientIndex, norm } from '../data/ingredients';
 import type { Cocktail, FlavorKey, MethodKey, SpiritKey, Strength, StyleKey } from '../data/types';
+import { useI18n } from '../i18n/I18n';
 import { useAppState } from '../lib/AppState';
 import { matchCocktail } from '../lib/matching';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 
 type FacetKey = 'era' | 'spirit' | 'flavor' | 'style' | 'strength' | 'method';
 
-const SPIRITS = (Object.keys(SPIRIT_LABELS) as SpiritKey[]).filter((s) =>
-  cocktails.some((c) => c.baseSpirits.includes(s)),
-);
-const FLAVORS = (Object.keys(FLAVOR_LABELS) as FlavorKey[]).filter((f) => cocktails.some((c) => c.flavors.includes(f)));
-const STYLES = (Object.keys(STYLE_LABELS) as StyleKey[]).filter((s) => cocktails.some((c) => c.style === s));
-const METHODS = (Object.keys(METHOD_LABELS) as MethodKey[]).filter((m) => cocktails.some((c) => c.method === m));
-const STRENGTHS = Object.keys(STRENGTH_LABELS) as Strength[];
-
 const isEqualParts = (c: Cocktail) => {
-  const vols = c.recipe.filter((l) => l.unit === 'ml' && l.amount).map((l) => l.amount);
+  const vols = c.recipe.filter((l) => (l.unit === 'ml' || l.unit === 'oz') && l.amount).map((l) => l.amount);
   return vols.length >= 3 && vols.every((v) => v === vols[0]);
 };
 
-interface Collection {
-  id: string;
-  title: string;
-  blurb: string;
-  color: string;
-  test: (c: Cocktail) => boolean;
-}
-
-const COLLECTIONS: Collection[] = [
-  {
-    id: 'equal-parts',
-    title: 'Equal parts, easy to remember',
-    blurb: 'No jigger maths — every measure is the same.',
-    color: '#f0c8a2',
-    test: isEqualParts,
-  },
-  {
-    id: 'three-or-fewer',
-    title: 'Three ingredients or fewer',
-    blurb: 'Minimal shopping, maximum payoff.',
-    color: '#c5d6e6',
-    test: (c) => requiredIngredientCount(c) <= 3,
-  },
-  {
-    id: 'bittersweet',
-    title: 'Bittersweet & bold',
-    blurb: 'Campari, Aperol and amaro at the heart.',
-    color: '#e8b7a8',
-    test: (c) => c.flavors.includes('bitter'),
-  },
-  {
-    id: 'long',
-    title: 'Long, cold & refreshing',
-    blurb: 'Tall, fizzy or packed with ice.',
-    color: '#b6d9c8',
-    test: (c) => c.flavors.includes('refreshing') && c.ice !== 'none',
-  },
-  {
-    id: 'sparkling',
-    title: 'Something sparkling',
-    blurb: 'Bubbles for celebrations — or Tuesdays.',
-    color: '#f1e3b0',
-    test: (c) => c.flavors.includes('bubbly'),
-  },
-  {
-    id: 'smoke-spice',
-    title: 'Smoke & spice',
-    blurb: 'Peat, mezcal and ginger heat.',
-    color: '#d5c3e3',
-    test: (c) => c.flavors.includes('smoky') || c.flavors.includes('spicy'),
-  },
+const COLLECTIONS: { id: string; color: string; test: (c: Cocktail) => boolean }[] = [
+  { id: 'equal-parts', color: '#f0c8a2', test: isEqualParts },
+  { id: 'three-or-fewer', color: '#c5d6e6', test: (c) => requiredIngredientCount(c) <= 3 },
+  { id: 'bittersweet', color: '#e8b7a8', test: (c) => c.flavors.includes('bitter') },
+  { id: 'long', color: '#b6d9c8', test: (c) => c.flavors.includes('refreshing') && c.ice !== 'none' },
+  { id: 'sparkling', color: '#f1e3b0', test: (c) => c.flavors.includes('bubbly') },
+  { id: 'smoke-spice', color: '#d5c3e3', test: (c) => c.flavors.includes('smoky') || c.flavors.includes('spicy') },
+  { id: 'tropical', color: '#bfe3d6', test: (c) => c.flavors.includes('tropical') },
+  { id: 'after-dinner', color: '#e3cdb4', test: (c) => c.flavors.includes('coffee') || c.flavors.includes('creamy') },
 ];
 
-const SORTS = {
-  az: 'A–Z',
-  fewest: 'Fewest ingredients',
-  bar: 'Best match for my bar',
-} as const;
-type SortKey = keyof typeof SORTS;
+type SortKey = 'az' | 'fewest' | 'bar';
 
-function useFacet(params: URLSearchParams, key: FacetKey): string[] {
+function facetValues(params: URLSearchParams, key: FacetKey): string[] {
   const v = params.get(key);
   return v ? v.split(',').filter(Boolean) : [];
 }
 
 export function DiscoverPage() {
-  useDocumentTitle('Discover');
+  const { t, cocktails, labels, ingredientIndex, collator, enName } = useI18n();
+  useDocumentTitle(t.discover.eyebrow);
   const [params, setParams] = useSearchParams();
   const { barSet, bar } = useAppState();
   const [showMore, setShowMore] = useState(false);
 
-  const era = useFacet(params, 'era');
-  const spirit = useFacet(params, 'spirit');
-  const flavor = useFacet(params, 'flavor');
-  const style = useFacet(params, 'style');
-  const strength = useFacet(params, 'strength');
-  const method = useFacet(params, 'method');
+  const SPIRITS = useMemo(
+    () => (Object.keys(labels.spirit) as SpiritKey[]).filter((s) => cocktails.some((c) => c.baseSpirits.includes(s))),
+    [labels, cocktails],
+  );
+  const FLAVORS = useMemo(
+    () => (Object.keys(labels.flavor) as FlavorKey[]).filter((f) => cocktails.some((c) => c.flavors.includes(f))),
+    [labels, cocktails],
+  );
+  const STYLES = useMemo(
+    () => (Object.keys(labels.style) as StyleKey[]).filter((s) => cocktails.some((c) => c.style === s)),
+    [labels, cocktails],
+  );
+  const METHODS = useMemo(
+    () => (Object.keys(labels.method) as MethodKey[]).filter((m) => cocktails.some((c) => c.method === m)),
+    [labels, cocktails],
+  );
+  const STRENGTHS = Object.keys(labels.strength) as Strength[];
+
+  const era = facetValues(params, 'era');
+  const spirit = facetValues(params, 'spirit');
+  const flavor = facetValues(params, 'flavor');
+  const style = facetValues(params, 'style');
+  const strength = facetValues(params, 'strength');
+  const method = facetValues(params, 'method');
   const collection = params.get('collection');
   const q = params.get('q') ?? '';
-  const sort = (params.get('sort') as SortKey) in SORTS ? (params.get('sort') as SortKey) : 'az';
+  const sortParam = params.get('sort');
+  const sort: SortKey = sortParam === 'fewest' || sortParam === 'bar' ? sortParam : 'az';
 
   const activeCollection = COLLECTIONS.find((c) => c.id === collection);
   const filtersActive =
@@ -137,14 +95,14 @@ export function DiscoverPage() {
 
   const clearAll = () => setParams(new URLSearchParams(), { replace: true });
 
-  const matches = useMemo(() => {
-    const m = new Map(cocktails.map((c) => [c.id, matchCocktail(c, barSet, ingredientIndex)]));
-    return m;
-  }, [barSet]);
+  const matches = useMemo(
+    () => new Map(cocktails.map((c) => [c.id, matchCocktail(c, barSet, ingredientIndex)])),
+    [cocktails, barSet, ingredientIndex],
+  );
 
   const results = useMemo(() => {
-    const nq = norm(q);
-    let list = cocktails.filter((c) => {
+    const words = norm(q).split(/\s+/).filter(Boolean);
+    const list = cocktails.filter((c) => {
       if (era.length && !era.includes(c.era)) return false;
       if (spirit.length && !c.baseSpirits.some((s) => spirit.includes(s))) return false;
       if (flavor.length && !c.flavors.some((f) => flavor.includes(f))) return false;
@@ -152,72 +110,70 @@ export function DiscoverPage() {
       if (strength.length && !strength.includes(c.strength)) return false;
       if (method.length && !method.includes(c.method)) return false;
       if (activeCollection && !activeCollection.test(c)) return false;
-      if (nq) {
+      if (words.length) {
+        const ids = c.recipe.flatMap((l) => l.ingredients);
         const hay = norm(
           [
             c.name,
+            enName(c.id),
             c.tagline,
             c.provenance?.creator ?? '',
             c.provenance?.bar ?? '',
-            ...c.recipe.flatMap((l) => l.ingredients.map((id) => ingredientIndex[id].name)),
+            ...ids.map((id) => ingredientIndex[id].name),
+            ...ids.map((id) => enIngredientIndex[id].name),
           ].join(' '),
         );
-        if (!nq.split(/\s+/).every((w) => hay.includes(w))) return false;
+        if (!words.every((w) => hay.includes(w))) return false;
       }
       return true;
     });
-    list = [...list].sort((a, b) => {
-      if (sort === 'fewest') return requiredIngredientCount(a) - requiredIngredientCount(b) || a.name.localeCompare(b.name);
+    return [...list].sort((a, b) => {
+      if (sort === 'fewest')
+        return requiredIngredientCount(a) - requiredIngredientCount(b) || collator.compare(a.name, b.name);
       if (sort === 'bar') {
-        const ma = matches.get(a.id)!;
-        const mb = matches.get(b.id)!;
-        return ma.missing.length - mb.missing.length || a.name.localeCompare(b.name);
+        return matches.get(a.id)!.missing.length - matches.get(b.id)!.missing.length || collator.compare(a.name, b.name);
       }
-      return a.name.localeCompare(b.name);
+      return collator.compare(a.name, b.name);
     });
-    return list;
-  }, [q, era, spirit, flavor, style, strength, method, activeCollection, sort, matches]);
+  }, [q, era, spirit, flavor, style, strength, method, activeCollection, sort, matches, cocktails, collator, enName, ingredientIndex]);
+
+  const countFor = (key: FacetKey, v: string) =>
+    cocktails.filter((c) =>
+      key === 'spirit'
+        ? c.baseSpirits.includes(v as SpiritKey)
+        : key === 'flavor'
+          ? c.flavors.includes(v as FlavorKey)
+          : key === 'style'
+            ? c.style === v
+            : key === 'strength'
+              ? c.strength === v
+              : key === 'method'
+                ? c.method === v
+                : c.era === v,
+    ).length;
 
   const facetGroup = (
     label: string,
     key: FacetKey,
     values: readonly string[],
-    labels: Record<string, string>,
+    names: Record<string, string>,
     selected: string[],
-    counts = true,
   ) => (
     <div className="facet" role="group" aria-label={label}>
       <span className="facet-label">{label}</span>
       <div className="facet-chips">
-        {values.map((v) => {
-          const n = counts
-            ? cocktails.filter((c) =>
-                key === 'spirit'
-                  ? c.baseSpirits.includes(v as SpiritKey)
-                  : key === 'flavor'
-                    ? c.flavors.includes(v as FlavorKey)
-                    : key === 'style'
-                      ? c.style === v
-                      : key === 'strength'
-                        ? c.strength === v
-                        : key === 'method'
-                          ? c.method === v
-                          : c.era === v,
-              ).length
-            : 0;
-          return (
-            <button
-              key={v}
-              type="button"
-              className="chip"
-              aria-pressed={selected.includes(v)}
-              onClick={() => toggle(key, v, key === 'era')}
-            >
-              {labels[v]}
-              {counts && <span className="chip-count">{n}</span>}
-            </button>
-          );
-        })}
+        {values.map((v) => (
+          <button
+            key={v}
+            type="button"
+            className="chip"
+            aria-pressed={selected.includes(v)}
+            onClick={() => toggle(key, v, key === 'era')}
+          >
+            {names[v]}
+            <span className="chip-count">{countFor(key, v)}</span>
+          </button>
+        ))}
       </div>
     </div>
   );
@@ -227,20 +183,18 @@ export function DiscoverPage() {
   return (
     <div className="container discover">
       <header className="page-head">
-        <p className="eyebrow">Discover</p>
-        <h1>Find your next favourite</h1>
-        <p className="muted page-lede">
-          Browse all {cocktails.length} cocktails by era, spirit, flavour and style — no need to own the ingredients.
-        </p>
+        <p className="eyebrow">{t.discover.eyebrow}</p>
+        <h1>{t.discover.title}</h1>
+        <p className="muted page-lede">{t.discover.lede(cocktails.length)}</p>
       </header>
 
       <div className="discover-controls">
         <label className="search-field">
           <IconSearch width={20} height={20} aria-hidden />
-          <span className="sr-only">Search cocktails</span>
+          <span className="sr-only">{t.discover.searchLabel}</span>
           <input
             type="search"
-            placeholder="Search by name, ingredient or creator…"
+            placeholder={t.discover.searchPlaceholder}
             value={q}
             onChange={(e) =>
               update((p) => {
@@ -251,9 +205,9 @@ export function DiscoverPage() {
           />
         </label>
 
-        {facetGroup('Era', 'era', ['classic', 'modern'], { classic: 'Classic', modern: 'Modern' }, era)}
-        {facetGroup('Base spirit', 'spirit', SPIRITS, SPIRIT_LABELS, spirit)}
-        {facetGroup('Flavour', 'flavor', FLAVORS, FLAVOR_LABELS, flavor)}
+        {facetGroup(t.discover.facetEra, 'era', ['classic', 'modern'], t.era, era)}
+        {facetGroup(t.discover.facetSpirit, 'spirit', SPIRITS, labels.spirit, spirit)}
+        {facetGroup(t.discover.facetFlavor, 'flavor', FLAVORS, labels.flavor, flavor)}
 
         <button
           type="button"
@@ -261,24 +215,25 @@ export function DiscoverPage() {
           aria-expanded={showMore || moreActive > 0}
           onClick={() => setShowMore((s) => !s)}
         >
-          <IconFilter width={18} height={18} /> Style, strength & method
+          <IconFilter width={18} height={18} /> {t.discover.more}
           {moreActive > 0 && <span className="chip-count on">{moreActive}</span>}
         </button>
         {(showMore || moreActive > 0) && (
           <div className="more-facets">
-            {facetGroup('Style', 'style', STYLES, STYLE_LABELS, style)}
-            {facetGroup('Strength', 'strength', STRENGTHS, STRENGTH_LABELS, strength)}
-            {facetGroup('Method', 'method', METHODS, METHOD_LABELS, method)}
+            {facetGroup(t.discover.facetStyle, 'style', STYLES, labels.style, style)}
+            {facetGroup(t.discover.facetStrength, 'strength', STRENGTHS, labels.strength, strength)}
+            {facetGroup(t.discover.facetMethod, 'method', METHODS, labels.method, method)}
           </div>
         )}
       </div>
 
       {!filtersActive && (
-        <section className="collections" aria-label="Collections">
-          <h2 className="collections-title">Collections</h2>
+        <section className="collections" aria-label={t.discover.collections}>
+          <h2 className="collections-title">{t.discover.collections}</h2>
           <div className="collection-grid">
             {COLLECTIONS.map((col) => {
-              const members = cocktails.filter(col.test);
+              const members = results.filter(col.test);
+              const [title, blurb] = t.discover.col[col.id];
               return (
                 <button
                   key={col.id}
@@ -287,10 +242,13 @@ export function DiscoverPage() {
                   style={{ background: col.color }}
                   onClick={() => update((p) => p.set('collection', col.id))}
                 >
-                  <span className="collection-name">{col.title}</span>
-                  <span className="collection-blurb">{col.blurb}</span>
+                  <span className="collection-name">{title}</span>
+                  <span className="collection-blurb">{blurb}</span>
                   <span className="collection-list">
-                    {members.slice(0, 4).map((m) => m.name).join(' · ')}
+                    {members
+                      .slice(0, 4)
+                      .map((m) => m.name)
+                      .join(' · ')}
                     {members.length > 4 ? ` +${members.length - 4}` : ''}
                   </span>
                 </button>
@@ -303,22 +261,20 @@ export function DiscoverPage() {
       <section aria-live="polite" className="results">
         <div className="results-bar">
           <div className="results-summary">
-            <strong>
-              {results.length} {results.length === 1 ? 'cocktail' : 'cocktails'}
-            </strong>
+            <strong>{t.discover.results(results.length)}</strong>
             {activeCollection && (
               <button type="button" className="active-filter" onClick={() => update((p) => p.delete('collection'))}>
-                {activeCollection.title} <IconX width={14} height={14} aria-label="Remove" />
+                {t.discover.col[activeCollection.id][0]} <IconX width={14} height={14} aria-label={t.discover.remove} />
               </button>
             )}
             {filtersActive && (
               <button type="button" className="link-btn" onClick={clearAll}>
-                Clear all
+                {t.discover.clearAll}
               </button>
             )}
           </div>
           <label className="sort">
-            <span>Sort</span>
+            <span>{t.discover.sort}</span>
             <select
               value={sort}
               onChange={(e) =>
@@ -328,22 +284,22 @@ export function DiscoverPage() {
                 })
               }
             >
-              {Object.entries(SORTS).map(([k, v]) => (
-                <option key={k} value={k} disabled={k === 'bar' && bar.length === 0}>
-                  {v}
-                  {k === 'bar' && bar.length === 0 ? ' (add ingredients first)' : ''}
-                </option>
-              ))}
+              <option value="az">{t.discover.sortAz}</option>
+              <option value="fewest">{t.discover.sortFewest}</option>
+              <option value="bar" disabled={bar.length === 0}>
+                {t.discover.sortBar}
+                {bar.length === 0 ? t.discover.sortBarDisabled : ''}
+              </option>
             </select>
           </label>
         </div>
 
         {results.length === 0 ? (
           <div className="empty">
-            <h3>No cocktails match all of those</h3>
-            <p>Try removing a filter or two.</p>
+            <h3>{t.discover.emptyTitle}</h3>
+            <p>{t.discover.emptyText}</p>
             <button type="button" className="btn btn-ghost" onClick={clearAll}>
-              Clear filters
+              {t.discover.clearFilters}
             </button>
           </div>
         ) : (
@@ -357,9 +313,7 @@ export function DiscoverPage() {
                   status={m.makeable ? 'ready' : undefined}
                   footer={
                     bar.length > 0 && !m.makeable ? (
-                      <span className="card-miss">
-                        Missing {m.missing.length} of {m.requiredCount}
-                      </span>
+                      <span className="card-miss">{t.discover.missingOf(m.missing.length, m.requiredCount)}</span>
                     ) : undefined
                   }
                 />
@@ -371,7 +325,9 @@ export function DiscoverPage() {
 
       {bar.length === 0 && (
         <p className="discover-hint muted">
-          Tip: <Link to="/bar">stock your bar</Link> to see which of these you can make right now.
+          {t.discover.hintBefore}
+          <Link to="/bar">{t.discover.hintLink}</Link>
+          {t.discover.hintAfter}
         </p>
       )}
     </div>

@@ -86,10 +86,11 @@ export function matchAll(
 }
 
 /** Human label for a recipe line's accepted ingredients: "Bourbon or rye whiskey". */
-export function lineLabel(line: RecipeLine, index: IngredientIndex): string {
+export function lineLabel(line: RecipeLine, index: IngredientIndex, locale: 'en' | 'zh' = 'en'): string {
   if (line.label) return line.label;
   const names = line.ingredients.map((id) => index[id]?.name ?? id);
   if (names.length === 1) return names[0];
+  if (locale === 'zh') return names.join('或');
   return names
     .map((n, i) => (i === 0 ? n : n.charAt(0).toLowerCase() + n.slice(1)))
     .join(' or ');
@@ -117,6 +118,6 @@ export function unlockSuggestions(
   }
   return [...tally.entries()]
     .map(([id, unlocks]) => ({ id, unlocks }))
-    .sort((a, b) => b.unlocks.length - a.unlocks.length || index[a.id].name.localeCompare(index[b.id].name))
+    .sort((a, b) => b.unlocks.length - a.unlocks.length || a.id.localeCompare(b.id))
     .slice(0, limit);
 }

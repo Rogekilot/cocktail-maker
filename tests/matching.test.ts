@@ -56,9 +56,29 @@ describe('make with what I have', () => {
     for (const r of nearMisses) expect(r.makeable).toBe(false);
   });
 
+  it('handles the new drinks’ reference-supported alternatives strictly', () => {
+    // Irish Coffee: IBA allows sugar syrup instead of sugar.
+    expect(can('irish-coffee', bar('irish-whiskey', 'coffee', 'cream', 'simple-syrup'))).toBe(true);
+    expect(can('irish-coffee', bar('irish-whiskey', 'coffee', 'cream'))).toBe(false);
+    // Russian Spring Punch: IBA says “sparkling wine”, so any sparkling wine works.
+    const rsp = ['vodka', 'lemon', 'creme-de-cassis', 'simple-syrup'];
+    expect(can('russian-spring-punch', bar(...rsp, 'sparkling-wine'))).toBe(true);
+    // …but the Old Cuban only allows Champagne or Prosecco.
+    expect(can('old-cuban', bar('aged-rum', 'lime', 'simple-syrup', 'mint', 'angostura', 'sparkling-wine'))).toBe(false);
+    // Cosmopolitan needs citrus vodka, not plain vodka.
+    expect(can('cosmopolitan', bar('vodka', 'triple-sec', 'lime', 'cranberry-juice'))).toBe(false);
+    // Bloody Mary seasonings are “to taste”, not optional — salt-type items must be on the list.
+    const bm = ['vodka', 'tomato-juice', 'lemon', 'worcestershire', 'tabasco', 'black-pepper'];
+    expect(can('bloody-mary', bar(...bm))).toBe(false);
+    expect(can('bloody-mary', bar(...bm, 'celery-salt'))).toBe(true);
+    // Champagne Cocktail: Grand Marnier is optional.
+    expect(can('champagne-cocktail', bar('champagne', 'cognac', 'angostura', 'sugar'))).toBe(true);
+  });
+
   it('labels alternatives readably', () => {
     const line = cocktailById['boulevardier'].recipe[0];
     expect(lineLabel(line, ingredientIndex)).toBe('Bourbon or rye whiskey');
+    expect(lineLabel(line, { ...ingredientIndex, bourbon: { ...ingredientIndex.bourbon, name: '波本威士忌' }, rye: { ...ingredientIndex.rye, name: '黑麦威士忌' } }, 'zh')).toBe('波本威士忌或黑麦威士忌');
   });
 
   it('never marks a cocktail makeable if any required line is missing (exhaustive)', () => {

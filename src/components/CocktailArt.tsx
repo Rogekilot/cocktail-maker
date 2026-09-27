@@ -24,9 +24,25 @@ interface GlassGeo {
   /** Width of the interior at a given y (for ice / foam placement). */
   widthAt: (y: number) => [number, number];
   opaque?: 'copper' | 'steel';
+  /** Optional handle path, drawn as a thick glass stroke. */
+  handle?: string;
 }
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+
+/** Symmetric interior width from a table of [y, halfWidth] points (sorted by y). */
+function fromTable(table: [number, number][]): (y: number) => [number, number] {
+  return (y) => {
+    let half = table[0][1];
+    if (y >= table[table.length - 1][0]) half = table[table.length - 1][1];
+    for (let i = 0; i < table.length - 1; i++) {
+      const [y0, h0] = table[i];
+      const [y1, h1] = table[i + 1];
+      if (y >= y0 && y <= y1) half = lerp(h0, h1, (y - y0) / (y1 - y0));
+    }
+    return [200 - half, 200 + half];
+  };
+}
 
 const GLASSES: Record<GlassKey, GlassGeo> = {
   rocks: {
@@ -140,6 +156,69 @@ const GLASSES: Record<GlassKey, GlassGeo> = {
     widthAt: () => [128, 262],
     opaque: 'copper',
   },
+  irish: {
+    interior: 'M147 206 L253 206 L250 328 Q247 354 200 356 Q153 354 150 328 Z',
+    top: 206,
+    bottom: 356,
+    rimL: 141,
+    rimR: 259,
+    rimY: 200,
+    outline: 'M141 200 L259 200 L256 332 Q252 366 206 368 L194 368 Q148 366 144 332 Z',
+    parts: [
+      'M194 366 L206 366 L204 398 L196 398 Z',
+      'M150 406 Q200 392 250 406 Q252 416 200 416 Q148 416 150 406 Z',
+    ],
+    handle: 'M256 226 Q304 230 300 272 Q296 316 253 318',
+    widthAt: fromTable([
+      [206, 53],
+      [328, 50],
+      [345, 38],
+      [356, 4],
+    ]),
+  },
+  hurricane: {
+    interior:
+      'M157 126 C153 190 176 220 173 250 C170 282 150 300 152 330 C154 356 176 364 200 364 C224 364 246 356 248 330 C250 300 230 282 227 250 C224 220 247 190 243 126 Z',
+    top: 126,
+    bottom: 364,
+    rimL: 151,
+    rimR: 249,
+    rimY: 120,
+    outline:
+      'M151 120 C147 190 170 220 167 250 C164 282 144 300 146 332 C148 364 176 372 200 372 C224 372 252 364 254 332 C256 300 236 282 233 250 C230 220 253 190 249 120 Z',
+    parts: [
+      'M195 370 L205 370 L204 398 L196 398 Z',
+      'M156 406 Q200 392 244 406 Q246 416 200 416 Q154 416 156 406 Z',
+    ],
+    widthAt: fromTable([
+      [126, 43],
+      [190, 36],
+      [250, 27],
+      [300, 44],
+      [330, 48],
+      [352, 36],
+      [364, 4],
+    ]),
+  },
+  wine: {
+    interior: 'M153 176 C150 250 160 294 200 296 C240 294 250 250 247 176 Z',
+    top: 176,
+    bottom: 296,
+    rimL: 148,
+    rimR: 252,
+    rimY: 170,
+    outline: 'M148 170 C144 252 156 302 204 304 L196 304 C244 302 256 252 252 170 Z',
+    parts: [
+      'M195 300 L205 300 L203 400 L197 400 Z',
+      'M150 406 Q200 392 250 406 Q252 416 200 416 Q148 416 150 406 Z',
+    ],
+    widthAt: fromTable([
+      [176, 47],
+      [240, 48],
+      [276, 36],
+      [296, 4],
+    ]),
+  },
   julep: {
     interior: 'M140 236 L260 236 L260 240 L140 240 Z',
     top: 232,
@@ -165,6 +244,9 @@ const FRAME: Record<GlassKey, [number, number, number]> = {
   flute: [40, 72, 320],
   mule: [35, 70, 330],
   julep: [35, 70, 330],
+  irish: [55, 110, 290],
+  hurricane: [5, 8, 390],
+  wine: [40, 72, 320],
 };
 
 // Deterministic pseudo-random for ice layout, seeded from the spec.
@@ -472,6 +554,152 @@ function Garnishes({ g, list, level }: { g: GlassGeo; list: GarnishArt[]; level:
       case 'straw':
         out.push(<rect key={key} x={g.rimL + (g.rimR - g.rimL) * 0.62} y={g.rimY - 86} width={9} height={170} rx={4} transform={`rotate(12 ${g.rimL + (g.rimR - g.rimL) * 0.62} ${g.rimY})`} fill="#1f1b17" fillOpacity={0.85} />);
         break;
+      case 'grapefruit-twist':
+        out.push(<Twist key={key} x={g.rimR - 26} y={g.rimY - 4} color="#f59a8a" dark="#e0685a" />);
+        break;
+      case 'orange-wheel':
+        out.push(<Citrus key={key} x={rimMidR} y={g.rimY - 4} r={32} color="#f8a948" rind="#e9761c" />);
+        break;
+      case 'lemon-wedge':
+        out.push(
+          <g key={key} transform={`rotate(-28 ${rimMidR} ${g.rimY})`}>
+            <path d={`M${rimMidR - 34} ${g.rimY} A34 34 0 0 0 ${rimMidR + 34} ${g.rimY} Z`} fill="#e6b820" />
+            <path d={`M${rimMidR - 28} ${g.rimY} A28 28 0 0 0 ${rimMidR + 28} ${g.rimY} Z`} fill="#fae27a" />
+            <path d={`M${rimMidR - 28} ${g.rimY} L${rimMidR + 28} ${g.rimY}`} stroke="#fffbe8" strokeWidth={3} />
+          </g>,
+        );
+        break;
+      case 'raspberry': {
+        const cx = g.rimR - 8;
+        const cy = g.rimY - 30;
+        out.push(
+          <g key={key}>
+            <Pick x1={cx + 30} y1={cy - 34} x2={cx - 60} y2={cy + 44} />
+            {[0, 1].map((k) => {
+              const bx = cx - k * 30;
+              const by = cy + k * 26;
+              return (
+                <g key={k}>
+                  {Array.from({ length: 10 }, (_, j) => {
+                    const a = (j / 10) * Math.PI * 2;
+                    return <circle key={j} cx={bx + Math.cos(a) * 8} cy={by + Math.sin(a) * 9} r={6} fill={j % 2 ? '#b3203a' : '#d23a52'} />;
+                  })}
+                  <circle cx={bx} cy={by} r={6} fill="#c72a45" />
+                  <circle cx={bx - 4} cy={by - 5} r={2} fill="#fff" fillOpacity={0.55} />
+                </g>
+              );
+            })}
+          </g>,
+        );
+        break;
+      }
+      case 'nutmeg': {
+        const [l, r] = g.widthAt(level + 2);
+        out.push(
+          <g key={key}>
+            {Array.from({ length: 34 }, (_, k) => {
+              const x = lerp(l + 14, r - 14, ((k * 37) % 100) / 100);
+              const y = level + 1 + ((k * 13) % 7);
+              return <circle key={k} cx={x} cy={y} r={1.3 + (k % 3) * 0.5} fill="#7a4a24" fillOpacity={0.85} />;
+            })}
+          </g>,
+        );
+        break;
+      }
+      case 'bitters-drops': {
+        out.push(
+          <g key={key}>
+            {[-30, -10, 10, 30].map((dx, k) => (
+              <ellipse key={k} cx={200 + dx} cy={level + 4 + (k % 2) * 2} rx={5} ry={3} fill="#7a2c14" fillOpacity={0.9} />
+            ))}
+          </g>,
+        );
+        break;
+      }
+      case 'lime-chunks': {
+        out.push(
+          <g key={key}>
+            {[
+              [175, g.bottom - 30, -20],
+              [222, g.bottom - 38, 25],
+              [196, g.bottom - 62, 5],
+            ].map(([x, y, rot], k) => (
+              <g key={k} transform={`rotate(${rot} ${x} ${y})`}>
+                <path d={`M${x - 20} ${y} A20 20 0 0 0 ${x + 20} ${y} Z`} fill="#4f8d27" fillOpacity={0.9} />
+                <path d={`M${x - 15} ${y} A15 15 0 0 0 ${x + 15} ${y} Z`} fill="#b9da6c" fillOpacity={0.9} />
+              </g>
+            ))}
+          </g>,
+        );
+        break;
+      }
+      case 'sugar-cube': {
+        const y = g.bottom - 18;
+        out.push(
+          <g key={key}>
+            <rect x={190} y={y - 4} width={20} height={18} rx={3} fill="#c98a55" transform={`rotate(-8 200 ${y})`} />
+            <rect x={193} y={y - 1} width={8} height={5} rx={2} fill="#fff" fillOpacity={0.45} transform={`rotate(-8 200 ${y})`} />
+          </g>,
+        );
+        break;
+      }
+      case 'cherry-rim': {
+        const cx = g.rimL + 34;
+        const cy = g.rimY - 12;
+        out.push(
+          <g key={key}>
+            <path d={`M${cx} ${cy - 12} Q${cx + 6} ${cy - 40} ${cx + 22} ${cy - 48}`} stroke="#5a3b1d" strokeWidth={2.5} fill="none" />
+            <circle cx={cx} cy={cy} r={14} fill="#a8121f" />
+            <circle cx={cx - 5} cy={cy - 5} r={4} fill="#fff" fillOpacity={0.55} />
+          </g>,
+        );
+        break;
+      }
+      case 'pineapple': {
+        const x = g.rimR - 14;
+        const y = g.rimY - 6;
+        out.push(
+          <g key={key} transform={`rotate(18 ${x} ${y})`}>
+            {[-22, -6, 10].map((a, k) => (
+              <path
+                key={k}
+                d={`M${x + 18} ${y - 26} q${a} -40 ${a * 1.6} -70 q${-a * 0.2 + 6} 30 ${-a * 1.4 - 2} 70 Z`}
+                fill={k % 2 ? '#3f8a3a' : '#2f7433'}
+              />
+            ))}
+            <path d={`M${x - 30} ${y + 20} L${x + 34} ${y + 20} L${x + 22} ${y - 30} Q${x} ${y - 40} ${x - 20} ${y - 26} Z`} fill="#f5c542" />
+            <path d={`M${x - 30} ${y + 20} L${x + 34} ${y + 20} L${x + 32} ${y + 30} L${x - 28} ${y + 30} Z`} fill="#b8862a" />
+            <path d={`M${x - 16} ${y - 18} L${x + 22} ${y + 12} M${x + 16} ${y - 22} L${x - 18} ${y + 12}`} stroke="#e0a92a" strokeWidth={2} />
+          </g>,
+        );
+        break;
+      }
+      case 'celery': {
+        const x = g.rimL + 40;
+        out.push(
+          <g key={key} transform={`rotate(-14 ${x} ${g.rimY})`}>
+            <rect x={x - 9} y={g.rimY - 90} width={18} height={200} rx={8} fill="#a9cf6a" />
+            <path d={`M${x - 2} ${g.rimY - 86} L${x - 2} ${g.rimY + 100}`} stroke="#8bb450" strokeWidth={3} />
+            {[-26, -4, 18].map((dx, k) => (
+              <ellipse key={k} cx={x + dx} cy={g.rimY - 100 - (k % 2) * 12} rx={16} ry={11} fill={k % 2 ? '#5f9e3a' : '#76b347'} />
+            ))}
+          </g>,
+        );
+        break;
+      }
+      case 'passion-fruit': {
+        const cy = level + 2;
+        out.push(
+          <g key={key}>
+            <ellipse cx={200} cy={cy} rx={38} ry={11} fill="#5a2144" />
+            <ellipse cx={200} cy={cy - 1} rx={32} ry={8} fill="#f3c23a" />
+            {Array.from({ length: 12 }, (_, k) => (
+              <ellipse key={k} cx={180 + ((k * 7) % 40)} cy={cy - 4 + ((k * 5) % 7)} rx={2.2} ry={1.6} fill="#2b1b12" />
+            ))}
+          </g>,
+        );
+        break;
+      }
     }
   });
   return <>{out}</>;
@@ -494,7 +722,7 @@ export function CocktailArt({
   const seed = seedOf(title);
   const liquidOpacity = spec.opacity ?? 0.9;
   const BACK: GarnishArt[] = ['straw', 'mint', 'basil'];
-  const INSIDE: GarnishArt[] = ['cherry', 'olive'];
+  const INSIDE: GarnishArt[] = ['cherry', 'olive', 'lime-chunks', 'sugar-cube'];
   const backGarnish = spec.garnish.filter((x) => BACK.includes(x));
   const insideGarnish = spec.garnish.filter((x) => INSIDE.includes(x));
   const rimGarnish = spec.garnish.filter((x) => !BACK.includes(x) && !INSIDE.includes(x));
@@ -511,7 +739,7 @@ export function CocktailArt({
     : null;
 
   const [fx, fy, fw] = FRAME[spec.glass];
-  const foamH = spec.foam ? Math.max(8, (g.bottom - g.top) * 0.09) : 0;
+  const foamH = spec.foam ? Math.max(8, (g.bottom - g.top) * (spec.foamDepth ?? 0.09)) : 0;
 
   return (
     <svg viewBox={`${fx} ${fy} ${fw} ${(fw * 1.15).toFixed(1)}`} role="img" aria-label={`Illustration of a ${title}`} className={className} preserveAspectRatio="xMidYMid slice">
@@ -630,6 +858,9 @@ export function CocktailArt({
           {(g.parts ?? []).map((d, i) => (
             <path key={i} d={d} fill="#ffffff" fillOpacity={0.4} stroke="#ffffff" strokeOpacity={0.85} strokeWidth={2.5} />
           ))}
+          {g.handle && (
+            <path d={g.handle} fill="none" stroke="#ffffff" strokeOpacity={0.85} strokeWidth={9} strokeLinecap="round" />
+          )}
           <g clipPath={`url(#outline-${uid})`}>
             <path d={`M${g.widthAt(g.top + 6)[0] + 10} ${g.rimY + 14} L${g.widthAt(Math.min(g.bottom, g.rimY + 110))[0] + 10} ${Math.min(g.bottom - 6, g.rimY + 110)}`} stroke="#fff" strokeOpacity={0.5} strokeWidth={6} strokeLinecap="round" />
           </g>

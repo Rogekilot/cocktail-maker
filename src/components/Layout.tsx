@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { useI18n } from '../i18n/I18n';
 import { useAppState } from '../lib/AppState';
 import { IconBar, IconCompass, IconHome, IconInfo } from './Icons';
 
@@ -14,13 +15,6 @@ function Logo() {
   );
 }
 
-const NAV = [
-  { to: '/', label: 'Today', icon: IconHome, end: true },
-  { to: '/discover', label: 'Discover', icon: IconCompass },
-  { to: '/bar', label: 'My Bar', icon: IconBar, showCount: true },
-  { to: '/about', label: 'About', icon: IconInfo },
-];
-
 function ScrollToTop() {
   const { pathname } = useLocation();
   useEffect(() => {
@@ -29,32 +23,60 @@ function ScrollToTop() {
   return null;
 }
 
+function LanguageToggle({ className }: { className?: string }) {
+  const { locale, setLocale, t } = useI18n();
+  return (
+    <button
+      type="button"
+      className={`lang-toggle ${className ?? ''}`}
+      onClick={() => setLocale(locale === 'zh' ? 'en' : 'zh')}
+      aria-label={t.switchToLabel}
+      title={t.switchToLabel}
+      lang={locale === 'zh' ? 'en' : 'zh-Hans'}
+    >
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+        <circle cx="12" cy="12" r="9" />
+        <path d="M3 12h18M12 3c2.8 3 2.8 15 0 18M12 3c-2.8 3-2.8 15 0 18" />
+      </svg>
+      {t.switchTo}
+    </button>
+  );
+}
+
 export function Layout() {
   const { bar } = useAppState();
+  const { t } = useI18n();
+  const NAV = [
+    { to: '/', label: t.nav.today, icon: IconHome, end: true },
+    { to: '/discover', label: t.nav.discover, icon: IconCompass },
+    { to: '/bar', label: t.nav.bar, icon: IconBar, showCount: true },
+    { to: '/about', label: t.nav.about, icon: IconInfo },
+  ];
   return (
     <>
       <ScrollToTop />
       <a className="skip-link" href="#main">
-        Skip to content
+        {t.skip}
       </a>
       <header className="site-header">
         <div className="container">
-          <Link to="/" className="brand" aria-label="Cocktail Maker home">
+          <Link to="/" className="brand" aria-label={t.homeLabel}>
             <Logo />
-            <span>Cocktail Maker</span>
+            <span>{t.brand}</span>
           </Link>
           <nav className="nav" aria-label="Main">
             {NAV.map((n) => (
               <NavLink key={n.to} to={n.to} end={n.end}>
                 {n.label}
                 {n.showCount && bar.length > 0 && (
-                  <span className="count" aria-label={`${bar.length} ingredients`}>
+                  <span className="count" aria-label={t.ingredientsCount(bar.length)}>
                     {bar.length}
                   </span>
                 )}
               </NavLink>
             ))}
           </nav>
+          <LanguageToggle />
         </div>
       </header>
       <main id="main">
@@ -62,10 +84,9 @@ export function Layout() {
       </main>
       <footer className="site-footer">
         <div className="container">
-          <span>Cocktail Maker · Please drink responsibly.</span>
+          <span>{t.footer.left}</span>
           <span>
-            Recipes follow cited references — see each drink’s Sources. Images are original illustrations.{' '}
-            <Link to="/about">How it works</Link>
+            {t.footer.right} <Link to="/about">{t.footer.how}</Link>
           </span>
         </div>
       </footer>
