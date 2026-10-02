@@ -29,6 +29,28 @@ npm run preview  # serve the production build at http://127.0.0.1:4173
 
 There is no backend and no account. The site keeps your ingredient list, the cocktails you've opened, today's pick and your language choice in the browser's `localStorage`. You can clear them from the About page.
 
+## Deploying (Cloudflare Pages)
+
+The site is fully static: `npm run build` produces a `dist/` folder, and there is no server or database to maintain.
+
+**One-time setup**
+1. Push this repository to GitHub (or GitLab).
+2. In the Cloudflare dashboard go to **Workers & Pages → Create → Pages → Connect to Git** and select the repository.
+3. Use these build settings:
+   - Framework preset: **Vite** (or None)
+   - Build command: `npm run build:ci`. This runs the tests first, so a broken change won't be published.
+   - Build output directory: `dist`
+   - Node version: read from `.nvmrc` (22)
+4. Click **Save and Deploy**. The site goes live at `https://<project>.pages.dev`.
+5. Optional: under **Custom domains**, add your own domain. HTTPS certificates are issued and renewed automatically.
+
+**After that**, every push to the main branch rebuilds and publishes the site automatically. Pull requests and other branches get their own preview URLs.
+
+**Notes**
+- Addresses like `/cocktail/negroni` work because Cloudflare Pages serves `index.html` for unknown paths when the site has no `404.html`. Don't add a `404.html`.
+- `public/_headers` lets browsers cache the fingerprinted files in `/assets` permanently. New builds use new file names, so visitors always get the latest version.
+- Without Git, you can also upload the `dist/` folder directly (**Create → Pages → Upload assets**). You'd then repeat the upload after each change.
+
 ## How the rules work
 
 **Make with what I have** (`src/lib/matching.ts`)
