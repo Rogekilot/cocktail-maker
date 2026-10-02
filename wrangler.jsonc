@@ -1,0 +1,12 @@
+{
+  // Cloudflare Workers static-assets config (used by `npx wrangler deploy`).
+  // No Worker script: Cloudflare serves the built files in dist/ directly.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "cocktail-maker",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    // Serve index.html for app routes like /cocktail/negroni so deep links and refreshes work.
+    "not_found_handling": "single-page-application"
+  }
+}

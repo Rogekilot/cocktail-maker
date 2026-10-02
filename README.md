@@ -29,27 +29,24 @@ npm run preview  # serve the production build at http://127.0.0.1:4173
 
 There is no backend and no account. The site keeps your ingredient list, the cocktails you've opened, today's pick and your language choice in the browser's `localStorage`. You can clear them from the About page.
 
-## Deploying (Cloudflare Pages)
+## Deploying (Cloudflare)
 
-The site is fully static: `npm run build` produces a `dist/` folder, and there is no server or database to maintain.
+The site is fully static: `npm run build` produces a `dist/` folder, and there is no server or database to maintain. It is hosted on Cloudflare as a Worker that serves static files, configured in `wrangler.jsonc`.
 
-**One-time setup**
-1. Push this repository to GitHub (or GitLab).
-2. In the Cloudflare dashboard go to **Workers & Pages → Create → Pages → Connect to Git** and select the repository.
+**One-time setup (already done for this repo)**
+1. Push this repository to GitHub.
+2. In the Cloudflare dashboard go to **Workers & Pages → Create** and import the GitHub repository.
 3. Use these build settings:
-   - Framework preset: **Vite** (or None)
    - Build command: `npm run build:ci`. This runs the tests first, so a broken change won't be published.
-   - Build output directory: `dist`
+   - Deploy command: `npx wrangler deploy`
    - Node version: read from `.nvmrc` (22)
-4. Click **Save and Deploy**. The site goes live at `https://<project>.pages.dev`.
-5. Optional: under **Custom domains**, add your own domain. HTTPS certificates are issued and renewed automatically.
+4. Optional: under **Domains**, add your own domain. HTTPS certificates are issued and renewed automatically.
 
-**After that**, every push to the main branch rebuilds and publishes the site automatically. Pull requests and other branches get their own preview URLs.
+**After that**, every push to `main` rebuilds and publishes the site automatically.
 
 **Notes**
-- Addresses like `/cocktail/negroni` work because Cloudflare Pages serves `index.html` for unknown paths when the site has no `404.html`. Don't add a `404.html`.
+- `wrangler.jsonc` sets `not_found_handling: "single-page-application"`. Cloudflare then serves `index.html` for app addresses like `/cocktail/negroni`, so direct links and page refreshes work. The Worker `name` must match the project name in Cloudflare.
 - `public/_headers` lets browsers cache the fingerprinted files in `/assets` permanently. New builds use new file names, so visitors always get the latest version.
-- Without Git, you can also upload the `dist/` folder directly (**Create → Pages → Upload assets**). You'd then repeat the upload after each change.
 
 ## How the rules work
 
