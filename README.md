@@ -69,7 +69,7 @@ The site is fully static: `npm run build` produces a `dist/` folder, and there i
 - **47 of the 56 formulas follow the IBA official cocktail page.** The Tom Collins uses the IBA's John Collins, whose own note says to use Old Tom gin for a Tom Collins.
 - **The other 9 are modern drinks the IBA doesn't list.** Their formulas follow the creator's own published spec where one exists: Death & Co for the Oaxaca Old Fashioned, and Difford's Guide citing Wayne Collins' equal parts for the White Negroni. Otherwise they follow a PUNCH recipe credited to the creator: Gold Rush, Final Ward, Division Bell, Jasmine, Red Hook, Greenpoint and Siesta.
 - Other sources cover history, provenance and recognition: Difford's Guide, PUNCH, CLASS, Imbibe, Robb Report, Whisky Advocate, Drinks International's 2025 bestselling-classics report, the creators' own bars and a digitised 1887 Jerry Thomas bar guide. Where sources disagree (years, ratios, venues, creators), the page says so.
-- The raw research notes, with the URLs checked and the conflicts found, are in `docs/research/`. All pages were accessed on 2026-09-28.
+- All source pages were accessed on 2026-09-28.
 - Measures are converted at the bar convention of 30 ml = 1 oz. Rounded conversions are marked with "≈".
 
 ## Simplified Chinese
@@ -96,6 +96,5 @@ src/
   pages/       Home, Discover, My Bar, Cocktail detail, About
   styles/      global + page CSS
 tests/         Vitest unit tests (matching rules, daily pick, data integrity, units, i18n)
-docs/research/ raw research notes behind the recipe data
 docs/zh-glossary.md  Chinese terminology glossary
 ```
